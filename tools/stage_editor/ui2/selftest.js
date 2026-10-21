@@ -343,17 +343,17 @@ export async function runSelfTest(A, {stages = [100, 604, 200], roundTrip = true
       fq.value = ''; fq.dispatchEvent(new Event('input'));
       A.logic.selectNodes(ids); const al = document.getElementById('lgAlign'); al.value = 'top'; al.dispatchEvent(new Event('change')); await wait(80);
       const g2 = A.logic.graph('stage'), tops = new Set(g2.nodes.filter(n => ids.includes(n.id)).map(n => n.y)).size;
-      A.logic.selectNodes(ids); document.getElementById('lgTpl').click(); await wait(60); const nm = document.getElementById('lgMyName'); nm.value = '[claude test] selftest tpl'; document.getElementById('lgMySaveB').click(); await wait(80);
-      const saved = A.logic.myTemplates().some(x => x.name === '[claude test] selftest tpl'); const n1 = A.logic.graph('stage').nodes.length;
+      A.logic.selectNodes(ids); document.getElementById('lgTpl').click(); await wait(60); const nm = document.getElementById('lgMyName'); nm.value = '[test] selftest tpl'; document.getElementById('lgMySaveB').click(); await wait(80);
+      const saved = A.logic.myTemplates().some(x => x.name === '[test] selftest tpl'); const n1 = A.logic.graph('stage').nodes.length;
       document.querySelector('#lgMyList [data-mi]')?.click(); await wait(150); const n2 = A.logic.graph('stage').nodes.length;
       document.getElementById('lgTpl').click(); await wait(60); const di = [...document.querySelectorAll('#lgMyList [data-mdel]')].pop(); di?.click(); await wait(60); document.getElementById('lgTplBox').hidden = true;
-      const gone = !A.logic.myTemplates().some(x => x.name === '[claude test] selftest tpl');
+      const gone = !A.logic.myTemplates().some(x => x.name === '[test] selftest tpl');
       while (A.undoDepth() > d0) await undo(); const back = JSON.stringify(A.project().logic ?? null) === before; A.showWorkspace('layout'); await wait(100);
       return /\d+ \/ \d+/.test(found) && tops === 1 && saved && n2 === n1 + 4 && gone && back ? {pass: true, why: `find 'timer' ${found}, align top -> 1 row, saved + inserted (+4 nodes) + deleted, undone`} : `find ${found}, rows ${tops}, saved ${saved}, inserted ${n2 - n1}, deleted ${gone}, undone ${back}`;
     });
     await check(tag, 'prefab: save + insert + delete', async () => {
       const two = A.items().filter(it => it.o.kind === 'native').slice(0, 2); if (two.length < 2) return {skip: 'fewer than 2 objects'};
-      A.setSelection(two); const name = '[claude test] selftest ' + S; await A.savePrefab(name); const pf = A.prefabs().find(p => p.name === A.prefabName(name)); if (!pf) return 'the prefab was not saved';
+      A.setSelection(two); const name = '[test] selftest ' + S; await A.savePrefab(name); const pf = A.prefabs().find(p => p.name === A.prefabName(name)); if (!pf) return 'the prefab was not saved';
       const n0 = A.items().length; A.insertPrefab(pf, A.centrePoint()); const n1 = A.items().length; await undo(); await A.deletePrefabNamed(pf.name); const gone = !A.prefabs().some(p => p.name === pf.name);
       return n1 === n0 + 2 && A.items().length === n0 && gone ? true : `inserted ${n1 - n0}, after undo ${A.items().length - n0}, deleted ${gone}`;
     });
@@ -465,8 +465,8 @@ export async function runSelfTest(A, {stages = [100, 604, 200], roundTrip = true
       const picked = A.project().stageFiles?.fog === +other.value; document.querySelector('#stageFiles [data-sfreset="fog"]')?.click(); await wait(200);
       return picked && A.project().stageFiles?.fog == null ? true : `picked ${picked}, reset ${A.project().stageFiles?.fog == null}`;
     });
-    if (roundTrip && S === stages[0]) await check(tag, 'save + reload round trip ([claude test] project)', async () => {
-      const name = `[claude test] selftest ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`; A.project().name = name; A.project().id = crypto.randomUUID().replace(/-/g, ''); A.markChanged();   // own id: the server gives every fresh copy of a stage the same id within a session
+    if (roundTrip && S === stages[0]) await check(tag, 'save + reload round trip ([test] project)', async () => {
+      const name = `[test] selftest ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`; A.project().name = name; A.project().id = crypto.randomUUID().replace(/-/g, ''); A.markChanged();   // own id: the server gives every fresh copy of a stage the same id within a session
       // a first save + reopen lets the server make its one-time migrations of a fresh copy (e.g. the start yaw to degrees,
       // playerStart.yawUnits); the second save + reopen must then give back exactly the same editable state
       const diff = (a, b) => { const x = JSON.parse(a), y = JSON.parse(b), out = [];
@@ -488,7 +488,7 @@ export async function runSelfTest(A, {stages = [100, 604, 200], roundTrip = true
   // B3: a stage from scratch (the Blank stage template): New blank stage, the Custom stage card (goals, cover upload),
   // Validate (saves first) and the package download. Its project is named 'selftest blank ...' (--cleanup)
   if (roundTrip) await check('-', 'custom stage from scratch: New blank stage, card, cover, Validate, Export', async () => {
-    const name = `[claude test] selftest blank ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, run = A.newBlankStage();   // the name goes in the app's own dialog (UX pass: no window.prompt)
+    const name = `[test] selftest blank ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`, run = A.newBlankStage();   // the name goes in the app's own dialog (UX pass: no window.prompt)
     await wait(150); const ask = document.querySelector('#chooseBox .askIn'); if (ask) { ask.value = name; document.querySelector('#chooseBox [data-v="ok"]').click(); } await run;
     for (let i = 0; i < 100 && !(A.ready() && A.project()?.name === name); i++) await wait(100); if (A.project()?.name !== name) return 'the blank stage did not open';
     for (let i = 0; i < 40 && !document.querySelector('#customStage .csCard'); i++) await wait(100); if (!document.querySelector('#customStage .csCard')) return 'no Custom stage card';

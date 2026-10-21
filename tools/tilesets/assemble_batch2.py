@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'stage_editor')); s
 import server, custom_stage
 
 Y = 21.0   # the floor top is 20: pieces sit 1 unit above it
-p = custom_stage.blank_stage('[claude test] tileset batch 2 (#128)')
+p = custom_stage.blank_stage('[test] tileset batch 2 (#128)')
 old = p['id']; p['id'] = uuid.uuid5(uuid.NAMESPACE_DNS, 'rouge-128-batch2').hex; p.pop('reference', None)
 shutil.rmtree(server.project_dir(p['id']), ignore_errors=True); server.save_project(p); shutil.rmtree(server.project_dir(old), ignore_errors=True)
 geo, mats, boxes, n = [], {}, {}, 0

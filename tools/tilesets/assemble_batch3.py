@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'stage_editor')); s
 import server, custom_stage
 
 Y = 21.0   # the blank stage's floor top is 20
-p = custom_stage.blank_stage('[claude test] tileset batch 3 (#128)', populated=False)
+p = custom_stage.blank_stage('[test] tileset batch 3 (#128)', populated=False)
 old = p['id']; p['id'] = uuid.uuid5(uuid.NAMESPACE_DNS, 'rouge-128-batch3').hex; p.pop('reference', None)
 shutil.rmtree(server.project_dir(p['id']), ignore_errors=True); server.save_project(p); shutil.rmtree(server.project_dir(old), ignore_errors=True)
 geo, paths, mats, boxes, n = [], [], {}, {}, 0
