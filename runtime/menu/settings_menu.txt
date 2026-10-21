@@ -46,7 +46,6 @@ Gameplay|invert_cam_y|Flip camera up / down|bool|0|Turns the camera the other wa
 Gameplay|skin|Character look|choice:0=Shadow (original),1=2P Yellow,2=2P Green,3=2P Orange,4=Metal blue,5=Metal purple,6=Super Shadow,7=Evil Shadow,8=Sonic|2|Play as one of the game's other models: 2P colours, Metal, Super, Evil or Sonic.
 ## Stages
 Gameplay|skip_any_cutscene|Skip any cutscene|bool|0|Press START (Tab on a keyboard) in a story scene or movie to skip it, even the first time.
-Gameplay|warp_enemy_counts|Enemies left on the warp screen|bool|0|Shows how many mission enemies are left near each checkpoint.
 Gameplay|set_objects|Objects per stage|choice:0=Original (2 048),1=4 096,2=8 192|1|Room for more objects in custom stages (Original holds 2,048). Needs Original game logic off.
 ## Bosses
 Gameplay|boss_rework|Hard bosses|bool|1|[Experimental] Bosses fight with new, harder attacks, unlike the original fights.
@@ -78,6 +77,9 @@ Audio|vol_music|Music|int:0:200:5|0|Stage and menu music.
 Audio|vol_sfx|Sound effects|int:0:200:5|0|Jumps, rings, explosions.
 Audio|vol_dialogue|Voices|int:0:200:5|0|Characters talking and radio calls.
 Audio|mute_background|Mute when in the background|bool|0|No sound while the game window is not in front or is minimised.
+## Stages
+# Small helpers, all off by default. They work only with Display > View > Original game logic off.
+Quality of life|warp_enemy_counts|Enemies left on the warp screen|bool|0|Shows how many mission enemies are left near each checkpoint.
 ## Shadows
 # Experimental: real-time shadows are still being worked on and may look wrong or slow the game.
 Lighting|light_quality|Shadow quality|choice:0=Low,1=Medium,2=High,3=Ultra|0|[Experimental] Higher gives smoother shadow edges but is slower.

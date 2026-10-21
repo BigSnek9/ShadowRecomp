@@ -101,6 +101,13 @@ int main(int argc, char** argv) {
     fprintf(stderr, "logging to %s\n", path);
     if (!freopen(path, "w", stderr)) fprintf(stdout, "could not open log %s\n", path);
   }
+  // #164 (user: "tabbing out still causes massive lag and audio stutters"): reproduced only with something else busy -
+  // a background test game (focus_test.py: 125 fps focused -> 88 tabbed out, audio under-runs). Once the window is not
+  // in front, Windows favours the foreground app and our game competes as an equal with every other busy process. The
+  // player's game now runs above normal priority, and quiet test games below normal, so they never slow real play.
+  // TEST_NORMAL_PRIORITY=1: both normal (A/B).
+  if (!getenv("TEST_NORMAL_PRIORITY"))
+    SetPriorityClass(GetCurrentProcess(), g_quiet ? BELOW_NORMAL_PRIORITY_CLASS : ABOVE_NORMAL_PRIORITY_CLASS);
   // The launcher (launcher.cpp): the window opens on it and the game boots when Play is pressed. Tests and tools
   // (--stage, --fast, --quiet, --no-launcher) go straight into the game.
   const bool plain_start = !no_launcher && !g_quiet && !g_mash && g_boot_stage == 0 && !g_boot_story;

@@ -58,7 +58,6 @@
       ]},
       {"title": "Stages", "items": [
         {"key": "skip_any_cutscene", "kind": "toggle", "label": "Skip any cutscene", "help": "Press START (Tab on a keyboard) in a story scene or movie to skip it, even the first time.", "default": 0, "store": "ini", "restart": "none"},
-        {"key": "warp_enemy_counts", "kind": "toggle", "label": "Enemies left on the warp screen", "help": "Shows how many mission enemies are left near each checkpoint.", "default": 0, "store": "ini", "restart": "none"},
         {"key": "set_objects", "kind": "choice", "label": "Objects per stage", "help": "Room for more objects in custom stages (Original holds 2,048). Needs Original game logic off.", "options": [["Original (2,048)", 0], ["4,096", 1], ["8,192", 2]], "default": 0, "store": "ini", "restart": "stage"}
       ]},
       {"title": "Bosses", "items": [
@@ -105,6 +104,11 @@
       ]}
     ]},
     {"id": "controls", "title": "Controls", "sections": []},
+    {"id": "qol", "title": "Quality of life", "sections": [
+      {"title": "Stages", "note": "Small helpers, all off by default. They work only with Display > View > Original game logic off.", "items": [
+        {"key": "warp_enemy_counts", "kind": "toggle", "label": "Enemies left on the warp screen", "help": "Shows how many mission enemies are left near each checkpoint.", "default": 0, "store": "ini", "restart": "none"}
+      ]}
+    ]},
     {"id": "lighting", "title": "Lighting", "sections": [
       {"title": "Shadows", "note": "Experimental: real-time shadows are still being worked on and may look wrong or slow the game.", "items": [
         {"key": "light_quality", "kind": "choice", "label": "Shadow quality", "help": "Higher gives smoother shadow edges but is slower.", "options": [["Low", 0], ["Medium", 1], ["High", 2], ["Ultra", 3]], "default": 1, "shown_if": "light", "store": "ini", "restart": "none", "experimental": true},
