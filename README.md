@@ -21,7 +21,7 @@ The first time you start it, it asks for your disc image (`.iso`, `.gcm` or `.rv
 
 ## What's new compared to the original
 
-- Higher frame rates
+- Unlimited frame rate: pick anything from 30 to unlimited, and the game still runs at its normal speed
 - Higher resolutions
 - Widescreen and other screen shapes
 - Real-time shadows
@@ -60,7 +60,7 @@ So far it's been confirmed to:
 
 ## Bugs
 
-There will be some. Things might look wrong, crash, or behave differently from the original. If you find something, feel free to open an issue, but I can't promise a fix.
+The major noticeable bugs found so far are fixed (see the [changelog](CHANGELOG.md)). There may still be some: things might look wrong, crash, or behave differently from the original. If you find something, feel free to open an issue, but I can't promise a fix.
 
 **2-player mode hasn't been tested yet.** It's planned, but for now expect it to be broken or not work at all.
 
