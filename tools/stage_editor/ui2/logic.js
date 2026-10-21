@@ -167,7 +167,7 @@ export function createLogic(app) {
     const k = kindOf(o); issues = new Map(); const bad = (n, t) => { const key = String(n.id).split(':')[0]; if (!issues.has(key)) issues.set(key, t); };
     if (k === 'function') {
       const f = graphOf(o); for (const q of f.ports) if (!f.nodes.some(n => n.id === q.node)) issues.set(f.nodes[0]?.id || '_', `port "${q.name}" lost its inner node`);
-      for (const n of f.nodes) { const d = DEFS.get(n.type); if (!d) bad(n, 'unknown node type ' + n.type); else if (d.category === 'event') bad(n, 'events stay outside a function'); else if (d.vm) bad(n, `${d.label} inside a function: the v4 compiler does not inline functions yet (track B)`); }
+      for (const n of f.nodes) { const d = DEFS.get(n.type); if (!d) bad(n, 'unknown node type ' + n.type); else if (d.category === 'event') bad(n, 'events stay outside a function'); else if (d.vm) bad(n, `${d.label} inside a function: the v4 compiler does not inline functions yet`); }
       status = `function · ${f.ports.filter(q => q.dir === 'in').length} in / ${f.ports.filter(q => q.dir === 'out').length} out · inlined where used`; return;
     }
     const g = expand(graphOf(o));

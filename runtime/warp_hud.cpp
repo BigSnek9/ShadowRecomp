@@ -1,4 +1,4 @@
-// Checkpoint warp screen (SavePointSelect, docs/stage-workshop/research/hexagon-hud-107.md): #107 / #108 (track A).
+// Checkpoint warp screen (SavePointSelect, docs/stage-workshop/research/hexagon-hud-107.md): #107 / #108.
 // The checkpoint's update fn_80117D6C (r3 = the checkpoint; +0x48 state, +0x50 flag word) opens the screen when the
 // state is 2, flag bit 1 is set (the player's command 0xD at a touched checkpoint, from button X) and fn_80117494 agrees.
 //   WARP_LOG=1    fn_80117494's four conditions each time it is asked (why the screen does / does not open)

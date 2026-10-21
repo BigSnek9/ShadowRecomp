@@ -1598,7 +1598,7 @@ def build_project(p):
                     files_all=list(files_new)+([(info['collisionName'],make_collision(combine(pcol)))] if pcol else [])
                     atomic(out/f'stg{p["stage"]:04d}_{m:02d}.one',one.new_archive(str(info['template']),files_all,block_name=f'blk{m:02d}'))
                     texcm_adds.update(adds);prefab_boxes[m]=list(boxes)
-                    warnings.append(f"Chunk prefab: stage {pf['sourceStage']} chunk {pf['chunk']} -> NEW chunk {m} (stg{p['stage']:04d}_{m:02d}.one, {len(files_all)} file(s), {len(adds)} texture(s) copied, {len(boxes)} BDT box(es) {np.round(lo).tolist()} .. {np.round(hi).tolist()}); needs the runtime that lists new mod files (track A).")
+                    warnings.append(f"Chunk prefab: stage {pf['sourceStage']} chunk {pf['chunk']} -> NEW chunk {m} (stg{p['stage']:04d}_{m:02d}.one, {len(files_all)} file(s), {len(adds)} texture(s) copied, {len(boxes)} BDT box(es) {np.round(lo).tolist()} .. {np.round(hi).tolist()}); needs the runtime that lists new mod files.")
                     for t in missing:warnings.append(f"Chunk prefab: texture {t} not found in stage {pf['sourceStage']} (the original lacks it too)")
                     continue
                 host=int(pf.get('host') or min(existing));files_new,adds,boxes,missing,(lo,hi),pcol,info=chunk_prefab(p,pf,existing,have|set(texcm_adds),host)
@@ -1968,7 +1968,7 @@ def build_lighting(p,build,warnings):
     rules+=gen_rules
     if rules:
         atomic(build/f'mods/stages/stg{p["stage"]:04d}.light.ini','\r\n'.join(lines).encode('utf-8'));out['file']=f'mods/stages/stg{p["stage"]:04d}.light.ini'
-        warnings.append(f"Lighting: {rules} rule(s) written to {out['file']} ({player} player region(s) use player_bounds); the game does not read this file yet (runtime pending, track A).")
+        warnings.append(f"Lighting: {rules} rule(s) written to {out['file']} ({player} player region(s) use player_bounds); the game does not read this file yet (runtime pending).")
     lights=[]
     for l in L.get('lights',[]):
         pos=[float(x) for x in l.get('position',[0,0,0])];col=[num(x,0,1) for x in l.get('colour',[1,1,1])]

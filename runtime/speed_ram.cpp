@@ -1,4 +1,4 @@
-// #111 Speed ram (track B, 2026-10-19). Running on the ground (Ground behaviour) at 90%+ of top speed, an enemy Shadow
+// #111 Speed ram (2026-10-19). Running on the ground (Ground behaviour) at 90%+ of top speed, an enemy Shadow
 // bumps into takes the hit instead of him: its contact damage is cancelled, the enemy gets a DamageCommand (the same
 // kind 4 / amount 10 the game's own attacks send), and Shadow slows to 70%. Shots / attacks that do not come from the
 // enemy's body (hit point more than 60 units from it) still hurt as usual. settings key speed_ram (1 = on, default).

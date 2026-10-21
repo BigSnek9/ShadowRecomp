@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "#132 in-game settings menu content (track B). One line per setting (restart: none / stage = next stage / game = after a game restart); edit here, then python tools/menu/gen_menu_schema.py (writes runtime/menu_schema.h, checks parity with the runtime keys).",
+  "about": "#132 in-game settings menu content. One line per setting (restart: none / stage = next stage / game = after a game restart); edit here, then python tools/menu/gen_menu_schema.py (writes runtime/menu_schema.h, checks parity with the runtime keys).",
   "pages": [
     {"id": "display", "title": "Display", "sections": [
       {"title": "Quick setup", "note": "The game starts as the original. Items tagged Experimental are new and may be janky - try them if you like.", "items": [
