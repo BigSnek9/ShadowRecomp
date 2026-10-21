@@ -1,0 +1,19 @@
+# Per-frame steps that the original code applies once per game frame regardless of dt (so they run faster above
+# 60 fps). gen.py multiplies the listed fadds/fsubs operand (a or b = the increment) by rt_dt60(): this frame's
+# length in 1/60 s with a custom frame rate, exactly 1 at the original 60 fps. Candidates: tools/perframe_scan.py.
+# Only add an entry after reading the code and confirming it is a per-frame step (not an init or a one-off).
+# <addr>  <a|b>  # class, field, why
+
+# FootingMovable (moving platforms): path phase +0x7C += speed +0x54 every update, both moving states
+8014AFC8 b   # fn_8014AFA0 (path-following state)
+8014B0E8 b   # fn_8014B05C (straight back-and-forth state)
+
+# UpDownReel: reel position +0x58 moves 0.18 (lbl_805F409C) per update toward its end stops
+80127FFC b   # state 0, up
+8012802C b   # state 0, down
+80128058 b   # state 1
+80128094 b   # state 2
+
+# Weight (the slammers you can stand on): height *(+0x6C)+0x4 rises 1.0 / slams 2.5 per update (wait timers use dt)
+8012B46C b   # fn_8012B314 state "rise": += 1.0 (lbl_805F4120)
+8012B598 b   # fn_8012B314 state "slam": -= 2.5 (lbl_805F4124)

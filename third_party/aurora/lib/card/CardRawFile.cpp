@@ -1,0 +1,1044 @@
+#include "CardRawFile.hpp"
+
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <memory>
+
+#include "../io.hpp"
+#include "../internal.hpp"
+#include "SRAM.hpp"
+
+namespace aurora::card {
+namespace {
+Module Log("aurora::card");
+
+bool is_supported_card_size(const uint16_t sizeMb) {
+  switch (static_cast<ECardSize>(sizeMb)) {
+  case ECardSize::Card59Mb:
+  case ECardSize::Card123Mb:
+  case ECardSize::Card251Mb:
+  case ECardSize::Card507Mb:
+  case ECardSize::Card1019Mb:
+  case ECardSize::Card2043Mb:
+    return true;
+  }
+  return false;
+}
+
+void null_file_access() { fprintf(stderr, "Attempted to access null file\n"); }
+} // namespace
+
+void CardRawFile::CardHeader::_swapEndian() {
+  m_formatTime = bswap(m_formatTime);
+  m_sramBias = bswap(m_sramBias);
+  m_sramLanguage = bswap(m_sramLanguage);
+  m_unknown = bswap(m_unknown);
+  m_deviceId = bswap(m_deviceId);
+  m_sizeMb = bswap(m_sizeMb);
+  m_encoding = bswap(m_encoding);
+  m_updateCounter = bswap(m_updateCounter);
+  m_checksum = bswap(m_checksum);
+  m_checksumInv = bswap(m_checksumInv);
+}
+
+CardRawFile::CardRawFile() { m_ch.raw.fill(0xFF); }
+
+CardRawFile::CardRawFile(CardRawFile&& other) {
+  m_ch.raw = other.m_ch.raw;
+  m_filename = std::move(other.m_filename);
+  m_fileHandle = std::move(other.m_fileHandle);
+  m_dirs = std::move(other.m_dirs);
+  m_bats = std::move(other.m_bats);
+  m_currentDir = other.m_currentDir;
+  m_currentBat = other.m_currentBat;
+
+  m_maxBlock = other.m_maxBlock;
+  std::copy(std::cbegin(other.m_game), std::cend(other.m_game), std::begin(m_game));
+  std::copy(std::cbegin(other.m_maker), std::cend(other.m_maker), std::begin(m_maker));
+}
+
+CardRawFile& CardRawFile::operator=(CardRawFile&& other) {
+  close();
+
+  m_ch.raw = other.m_ch.raw;
+  m_filename = std::move(other.m_filename);
+  m_fileHandle = std::move(other.m_fileHandle);
+  m_dirs = std::move(other.m_dirs);
+  m_bats = std::move(other.m_bats);
+  m_currentDir = other.m_currentDir;
+  m_currentBat = other.m_currentBat;
+
+  m_maxBlock = other.m_maxBlock;
+  std::copy(std::cbegin(other.m_game), std::cend(other.m_game), std::begin(m_game));
+  std::copy(std::cbegin(other.m_maker), std::cend(other.m_maker), std::begin(m_maker));
+
+  return *this;
+}
+
+ECardResult CardRawFile::_pumpOpen() {
+  if (m_opened)
+    return ECardResult::READY;
+
+  if (!m_fileHandle)
+    return ECardResult::NOCARD;
+
+  m_ch._swapEndian();
+  m_maxBlock = m_ch.m_sizeMb * MbitToBlocks;
+
+  m_dirs[0].swapEndian();
+  m_dirs[1].swapEndian();
+  m_bats[0].swapEndian();
+  m_bats[1].swapEndian();
+
+  /* Check for data integrity, restoring valid data in case of corruption if possible */
+  if (!m_dirs[0].valid() && m_dirs[1].valid())
+    m_dirs[0] = m_dirs[1];
+  else if (!m_dirs[1].valid() && m_dirs[0].valid())
+    m_dirs[1] = m_dirs[0];
+  if (!m_bats[0].valid() && m_bats[1].valid())
+    m_bats[0] = m_bats[1];
+  else if (!m_bats[1].valid() && m_bats[0].valid())
+    m_bats[1] = m_bats[0];
+
+  if (m_dirs[0].data.m_updateCounter > m_dirs[1].data.m_updateCounter)
+    m_currentDir = 0;
+  else
+    m_currentDir = 1;
+
+  if (m_bats[0].m_updateCounter > m_bats[1].m_updateCounter)
+    m_currentBat = 0;
+  else
+    m_currentBat = 1;
+
+  m_opened = true;
+
+  return ECardResult::READY;
+}
+
+void CardRawFile::_repairCard() {
+  // The old formatter wrote one block at the data-block count offset, leaving the image four blocks short.
+  constexpr uint32_t MissingBlocks = 4;
+
+  const uint16_t sizeMb = bswap(m_ch.m_sizeMb);
+  if (!is_supported_card_size(sizeMb))
+    return;
+
+  const uint32_t expectedBlocks = static_cast<uint32_t>(sizeMb) * MbitToBlocks;
+  const uintmax_t expectedSize = static_cast<uintmax_t>(expectedBlocks) * BlockSize;
+  const uintmax_t legacySize = expectedSize - MissingBlocks * BlockSize;
+  if (m_fileHandle.fileSize() != legacySize)
+    return;
+
+  if (_pumpOpen() != ECardResult::READY || getError() != ECardResult::READY) {
+    Log.warn("Not repairing legacy raw card image with invalid metadata: {}", io::fs_path_to_string(m_filename));
+    return;
+  }
+
+  const BlockAllocationTable& bat = m_bats[m_currentBat];
+  for (uint32_t block = expectedBlocks - MissingBlocks; block < expectedBlocks; ++block) {
+    if (bat.getNextBlock(static_cast<uint16_t>(block)) != 0) {
+      Log.warn("Not repairing legacy raw card image because missing block {} is allocated: {}", block,
+               io::fs_path_to_string(m_filename));
+      return;
+    }
+  }
+
+  std::array<uint8_t, MissingBlocks * BlockSize> missingBlocks;
+  missingBlocks.fill(0xFF);
+  if (!m_fileHandle.fileWrite(missingBlocks.data(), missingBlocks.size(), legacySize)) {
+    Log.error("Failed to repair legacy raw card image: {}", io::fs_path_to_string(m_filename));
+    return;
+  }
+
+  Log.info("Repaired legacy raw card image: {}", io::fs_path_to_string(m_filename));
+}
+
+void CardRawFile::InitCard(const char* game, const char* maker) {
+  m_ch.raw.fill(0xFF);
+
+  if (game != nullptr && std::strlen(game) == 4) {
+    std::memcpy(m_game, game, 4);
+  }
+  if (maker != nullptr && std::strlen(maker) == 2) {
+    std::memcpy(m_maker, maker, 2);
+  }
+}
+
+CardRawFile::~CardRawFile() { CardRawFile::close(); }
+
+ECardResult CardRawFile::openFile(const char* filename, FileHandle& handleOut) {
+  const ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY) {
+    return openRes;
+  }
+
+  handleOut = {};
+  const File* const f = m_dirs[m_currentDir].getFile(m_game, m_maker, filename);
+  if (!f || f->m_game[0] == 0xFF) {
+    return ECardResult::NOFILE;
+  }
+
+  const int32_t idx = m_dirs[m_currentDir].indexForFile(f);
+  if (idx != -1) {
+    handleOut = FileHandle(idx);
+    return ECardResult::READY;
+  }
+
+  return ECardResult::FATAL_ERROR;
+}
+
+ECardResult CardRawFile::openFile(uint32_t fileno, FileHandle& handleOut) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  handleOut = {};
+  File* f = m_dirs[m_currentDir].getFile(fileno);
+  if (!f || f->m_game[0] == 0xFF)
+    return ECardResult::NOFILE;
+  handleOut = FileHandle(fileno);
+  return ECardResult::READY;
+}
+
+void CardRawFile::_updateDirAndBat(const Directory& dir, const BlockAllocationTable& bat) {
+  m_currentDir = !m_currentDir;
+  Directory& updateDir = m_dirs[m_currentDir];
+  updateDir = dir;
+  updateDir.data.m_updateCounter++;
+  updateDir.updateChecksum();
+
+  m_currentBat = !m_currentBat;
+  BlockAllocationTable& updateBat = m_bats[m_currentBat];
+  updateBat = bat;
+  updateBat.m_updateCounter++;
+  updateBat.updateChecksum();
+
+  m_dirty = true;
+}
+
+void CardRawFile::_updateChecksum() {
+  m_ch._swapEndian();
+  calculateChecksumBE(reinterpret_cast<uint16_t*>(m_ch.raw.data()), 0xFE, &m_ch.m_checksum, &m_ch.m_checksumInv);
+  m_ch._swapEndian();
+}
+
+File* CardRawFile::_fileFromHandle(const FileHandle& fh) const {
+  if (!fh) {
+    null_file_access();
+    return nullptr;
+  }
+  return const_cast<Directory&>(m_dirs[m_currentDir]).getFile(fh.idx);
+}
+
+ECardResult CardRawFile::createFile(const char* filename, size_t size, FileHandle& handleOut) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  handleOut = {};
+
+  if (size == 0 || size % BlockSize != 0)
+    return ECardResult::FATAL_ERROR;
+  if (strlen(filename) > 32)
+    return ECardResult::NAMETOOLONG;
+  if (m_dirs[m_currentDir].getFile(m_game, m_maker, filename))
+    return ECardResult::EXIST;
+  if (size / BlockSize > m_bats[m_currentBat].numFreeBlocks())
+    return ECardResult::INSSPACE;
+  const auto neededBlocks = static_cast<uint16_t>(size / BlockSize);
+  if (!m_dirs[m_currentDir].hasFreeFile())
+    return ECardResult::NOENT;
+
+  Directory dir = m_dirs[m_currentDir];
+  BlockAllocationTable bat = m_bats[m_currentBat];
+  File* f = dir.getFirstFreeFile(m_game, m_maker, filename);
+  uint16_t block = bat.allocateBlocks(neededBlocks, m_maxBlock - FSTBlocks);
+  if (f && block != 0xFFFF) {
+    f->m_modifiedTime = static_cast<uint32_t>(getGCTime());
+    f->m_firstBlock = block;
+    f->m_blockCount = neededBlocks;
+
+    handleOut = FileHandle(dir.indexForFile(f));
+    _updateDirAndBat(dir, bat);
+    return ECardResult::READY;
+  }
+
+  return ECardResult::FATAL_ERROR;
+}
+
+ECardResult CardRawFile::closeFile(FileHandle& fh) {
+  fh.offset = 0;
+  return ECardResult::READY;
+}
+
+FileHandle CardRawFile::firstFile() {
+  const File* const f = m_dirs[m_currentDir].getFirstNonFreeFile(0, m_game, m_maker);
+
+  if (f == nullptr) {
+    return {};
+  }
+
+  return FileHandle(m_dirs[m_currentDir].indexForFile(f));
+}
+
+FileHandle CardRawFile::nextFile(const FileHandle& cur) {
+  if (!cur) {
+    null_file_access();
+    return {};
+  }
+
+  const File* const next = m_dirs[m_currentDir].getFirstNonFreeFile(cur.idx + 1, m_game, m_maker);
+  if (next == nullptr) {
+    return {};
+  }
+
+  return FileHandle(m_dirs[m_currentDir].indexForFile(next));
+}
+
+const char* CardRawFile::getFilename(const FileHandle& fh) const {
+  const File* const f = _fileFromHandle(fh);
+
+  if (f == nullptr) {
+    return nullptr;
+  }
+
+  return f->m_filename;
+}
+
+void CardRawFile::_deleteFile(File& f, BlockAllocationTable& bat) {
+  uint16_t block = f.m_firstBlock;
+  while (block != 0xFFFF) {
+    /* TODO: add a fragmentation check */
+    uint16_t nextBlock = bat.getNextBlock(block);
+    bat.clear(block, 1);
+    block = nextBlock;
+  }
+  f = File();
+}
+
+void CardRawFile::deleteFile(const FileHandle& fh) {
+  if (!fh) {
+    null_file_access();
+    return;
+  }
+  Directory dir = m_dirs[m_currentDir];
+  BlockAllocationTable bat = m_bats[m_currentBat];
+  _deleteFile(*dir.getFile(fh.idx), bat);
+  _updateDirAndBat(dir, bat);
+}
+
+ECardResult CardRawFile::deleteFile(const char* filename) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  Directory dir = m_dirs[m_currentDir];
+  File* f = dir.getFile(m_game, m_maker, filename);
+  if (!f)
+    return ECardResult::NOFILE;
+
+  BlockAllocationTable bat = m_bats[m_currentBat];
+  _deleteFile(*f, bat);
+  _updateDirAndBat(dir, bat);
+  return ECardResult::READY;
+}
+
+ECardResult CardRawFile::deleteFile(uint32_t fileno) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  Directory dir = m_dirs[m_currentDir];
+  File* f = dir.getFile(fileno);
+  if (!f)
+    return ECardResult::NOFILE;
+
+  BlockAllocationTable bat = m_bats[m_currentBat];
+  _deleteFile(*f, bat);
+  _updateDirAndBat(dir, bat);
+  return ECardResult::READY;
+}
+
+ECardResult CardRawFile::renameFile(const char* oldName, const char* newName) {
+  const ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY) {
+    return openRes;
+  }
+
+  if (std::strlen(newName) > 32) {
+    return ECardResult::NAMETOOLONG;
+  }
+
+  Directory dir = m_dirs[m_currentDir];
+  File* f = dir.getFile(m_game, m_maker, oldName);
+  if (f == nullptr) {
+    return ECardResult::NOFILE;
+  }
+
+  if (dir.getFile(m_game, m_maker, newName)) {
+    return ECardResult::EXIST;
+  }
+  std::strncpy(f->m_filename, newName, CARD_FILENAME_MAX);
+  _updateDirAndBat(dir, m_bats[m_currentBat]);
+  return ECardResult::READY;
+}
+
+ECardResult CardRawFile::fileWrite(FileHandle& fh, const void* buf, size_t size) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  if (!fh) {
+    null_file_access();
+    return ECardResult::NOFILE;
+  }
+  File* file = m_dirs[m_currentDir].getFile(fh.idx);
+  if (!file || file->m_game[0] == 0xFF) {
+    return ECardResult::NOFILE;
+  }
+  const size_t dataSize = static_cast<size_t>(file->m_blockCount) * BlockSize;
+  if (fh.offset < 0 || static_cast<size_t>(fh.offset) > dataSize || size > dataSize - fh.offset) {
+    return ECardResult::LIMIT;
+  }
+
+  const auto failWrite = [this](ECardResult result) {
+    if (m_dirty) {
+      open(m_filename);
+    }
+    return result;
+  };
+  auto writer = io::open_atomic_file(m_filename, io::AtomicFileMode::UpdateExisting);
+  if (!writer) {
+    return failWrite(ECardResult::IOERROR);
+  }
+
+  /* Block handling is a little different from cache handling,
+   * since each block can be in an arbitrary location we must
+   * first find our starting block.
+   */
+  const uint16_t blockId = static_cast<uint16_t>(fh.offset / BlockSize);
+  uint16_t block = file->m_firstBlock;
+  for (uint16_t i = 0; i < blockId; i++)
+    block = m_bats[m_currentBat].getNextBlock(block);
+
+  const uint8_t* tmpBuf = static_cast<const uint8_t*>(buf);
+  uint16_t curBlock = block;
+  uint32_t blockOffset = fh.offset % BlockSize;
+  size_t rem = size;
+  while (rem) {
+    if (curBlock < FSTBlocks || curBlock >= m_maxBlock) {
+      return failWrite(ECardResult::BROKEN);
+    }
+
+    size_t cacheSize = rem;
+    if (cacheSize + blockOffset > BlockSize)
+      cacheSize = BlockSize - blockOffset;
+    uint32_t offset = (curBlock * BlockSize) + blockOffset;
+    if (!io::write_at(writer.get(), offset, tmpBuf, cacheSize)) {
+      return failWrite(ECardResult::IOERROR);
+    }
+    tmpBuf += cacheSize;
+    rem -= cacheSize;
+    blockOffset += cacheSize;
+    if (blockOffset >= BlockSize) {
+      curBlock = m_bats[m_currentBat].getNextBlock(curBlock);
+      blockOffset = 0;
+    }
+  }
+  if ((m_dirty && !_writeMetadata(writer.get())) || !writer.commit()) {
+    return failWrite(ECardResult::IOERROR);
+  }
+  m_dirty = false;
+  fh.offset += size;
+
+  return ECardResult::READY;
+}
+
+ECardResult CardRawFile::fileRead(FileHandle& fh, void* dst, size_t size) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  if (!fh) {
+    null_file_access();
+    return ECardResult::NOFILE;
+  }
+  File* file = m_dirs[m_currentDir].getFile(fh.idx);
+  if (!file)
+    return ECardResult::NOFILE;
+  /* Block handling is a little different from cache handling,
+   * since each block can be in an arbitrary location we must
+   * first find our starting block.
+   */
+  const uint16_t blockId = static_cast<uint16_t>(fh.offset / BlockSize);
+  uint16_t block = file->m_firstBlock;
+  for (uint16_t i = 0; i < blockId; i++)
+    block = m_bats[m_currentBat].getNextBlock(block);
+
+  uint8_t* tmpBuf = static_cast<uint8_t*>(dst);
+  uint16_t curBlock = block;
+  uint32_t blockOffset = fh.offset % BlockSize;
+  size_t rem = size;
+  while (rem) {
+    if (curBlock == 0xFFFF)
+      return ECardResult::NOFILE;
+
+    size_t cacheSize = rem;
+    if (cacheSize + blockOffset > BlockSize)
+      cacheSize = BlockSize - blockOffset;
+    uint32_t offset = (curBlock * BlockSize) + blockOffset;
+    if (!m_fileHandle.fileRead(tmpBuf, cacheSize, offset))
+      return ECardResult::FATAL_ERROR;
+    tmpBuf += cacheSize;
+    rem -= cacheSize;
+    blockOffset += cacheSize;
+    if (blockOffset >= BlockSize) {
+      curBlock = m_bats[m_currentBat].getNextBlock(curBlock);
+      blockOffset = 0;
+    }
+  }
+  fh.offset += size;
+
+  return ECardResult::READY;
+}
+
+void CardRawFile::seek(FileHandle& fh, int32_t pos, SeekOrigin whence) {
+  if (!fh) {
+    null_file_access();
+    return;
+  }
+  File* file = m_dirs[m_currentDir].getFile(fh.idx);
+  if (!file)
+    return;
+
+  switch (whence) {
+  case SeekOrigin::Begin:
+    fh.offset = pos;
+    break;
+  case SeekOrigin::Current:
+    fh.offset += pos;
+    break;
+  case SeekOrigin::End:
+    fh.offset = static_cast<int32_t>(file->m_blockCount * BlockSize) - pos;
+    break;
+  }
+}
+
+int32_t CardRawFile::tell(const FileHandle& fh) const { return fh.offset; }
+
+void CardRawFile::setPublic(const FileHandle& fh, bool pub) {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return;
+
+  if (pub)
+    file->m_permissions |= EPermissions::Public;
+  else
+    file->m_permissions &= ~EPermissions::Public;
+}
+
+bool CardRawFile::isPublic(const FileHandle& fh) const {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return false;
+
+  return static_cast<bool>(file->m_permissions & EPermissions::Public);
+}
+
+void CardRawFile::setCanCopy(const FileHandle& fh, bool copy) const {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return;
+
+  if (copy)
+    file->m_permissions &= ~EPermissions::NoCopy;
+  else
+    file->m_permissions |= EPermissions::NoCopy;
+}
+
+bool CardRawFile::canCopy(const FileHandle& fh) const {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return false;
+
+  return !static_cast<bool>(file->m_permissions & EPermissions::NoCopy);
+}
+
+void CardRawFile::setCanMove(const FileHandle& fh, bool move) {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return;
+
+  if (move)
+    file->m_permissions &= ~EPermissions::NoMove;
+  else
+    file->m_permissions |= EPermissions::NoMove;
+}
+
+bool CardRawFile::canMove(const FileHandle& fh) const {
+  File* file = _fileFromHandle(fh);
+  if (!file)
+    return false;
+
+  return !static_cast<bool>(file->m_permissions & EPermissions::NoMove);
+}
+
+ECardResult CardRawFile::getStatus(const FileHandle& fh, CardStat& statOut) const {
+  if (!fh) {
+    null_file_access();
+    return ECardResult::NOFILE;
+  }
+  return getStatus(fh.idx, statOut);
+}
+
+ECardResult CardRawFile::getStatus(uint32_t fileNo, CardStat& statOut) const {
+  ECardResult openRes = const_cast<CardRawFile*>(this)->_pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  const File* file = const_cast<Directory&>(m_dirs[m_currentDir]).getFile(fileNo);
+  if (!file || file->m_game[0] == 0xFF)
+    return ECardResult::NOFILE;
+
+  std::strncpy(statOut.x0_fileName, file->m_filename, 32);
+  statOut.x20_length = file->m_blockCount * BlockSize;
+  statOut.x24_time = file->m_modifiedTime;
+  memmove(statOut.x28_gameName.data(), file->m_game, statOut.x28_gameName.size());
+  memmove(statOut.x2c_company.data(), file->m_maker, statOut.x2c_company.size());
+
+  statOut.x2e_bannerFormat = file->m_bannerFlags;
+  statOut.x30_iconAddr = file->m_iconAddress;
+  statOut.x34_iconFormat = file->m_iconFmt;
+  statOut.x36_iconSpeed = file->m_animSpeed;
+  statOut.x38_commentAddr = file->m_commentAddr;
+
+  if (file->m_iconAddress == UINT32_MAX) {
+    statOut.x3c_offsetBanner = UINT32_MAX;
+    statOut.x40_offsetBannerTlut = UINT32_MAX;
+    statOut.x44_offsetIcon.fill(UINT32_MAX);
+    statOut.x64_offsetIconTlut = UINT32_MAX;
+    statOut.x68_offsetData = file->m_commentAddr + 64;
+  } else {
+    uint32_t cur = file->m_iconAddress;
+    statOut.x3c_offsetBanner = cur;
+    cur += BannerSize(statOut.GetBannerFormat());
+    statOut.x40_offsetBannerTlut = cur;
+    cur += TlutSize(statOut.GetBannerFormat());
+    bool palette = false;
+    for (size_t i = 0; i < statOut.x44_offsetIcon.size(); ++i) {
+      statOut.x44_offsetIcon[i] = cur;
+      const EImageFormat fmt = statOut.GetIconFormat(static_cast<int>(i));
+      if (fmt == EImageFormat::C8) {
+        palette = true;
+      }
+      cur += IconSize(fmt);
+    }
+    if (palette) {
+      statOut.x64_offsetIconTlut = cur;
+      cur += TlutSize(EImageFormat::C8);
+    } else
+      statOut.x64_offsetIconTlut = UINT32_MAX;
+    statOut.x68_offsetData = cur;
+  }
+
+  return ECardResult::READY;
+}
+
+ECardResult CardRawFile::setStatus(const FileHandle& fh, const CardStat& stat) {
+  if (!fh) {
+    null_file_access();
+    return ECardResult::NOFILE;
+  }
+  return setStatus(fh.idx, stat);
+}
+
+ECardResult CardRawFile::setStatus(uint32_t fileNo, const CardStat& stat) {
+  ECardResult openRes = _pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  Directory dir = m_dirs[m_currentDir];
+  File* file = dir.getFile(fileNo);
+  if (!file || file->m_game[0] == 0xFF)
+    return ECardResult::NOFILE;
+
+  file->m_bannerFlags = stat.x2e_bannerFormat;
+  file->m_iconAddress = stat.x30_iconAddr;
+  file->m_iconFmt = stat.x34_iconFormat;
+  file->m_animSpeed = stat.x36_iconSpeed;
+  file->m_commentAddr = stat.x38_commentAddr;
+
+  _updateDirAndBat(dir, m_bats[m_currentBat]);
+  return ECardResult::READY;
+}
+
+#if 0 // TODO: Async-friendly implementations
+bool Card::copyFileTo(FileHandle& fh, Card& dest)
+{
+    if (!canCopy(fh))
+        return false;
+
+    /* Do a self test to avoid adding a file to itself */
+    if (this == &dest)
+        return false;
+
+    /* Now to add fh */
+    File* toCopy = _fileFromHandle(fh);
+    if (!toCopy)
+        return false;
+
+    /* Check to make sure dest does not already contain fh */
+    FileHandle tmpHandle;
+    dest.openFile(toCopy->m_filename, tmpHandle);
+    if (tmpHandle)
+        return false;
+
+    /* Try to allocate a new file */
+    dest.createFile(toCopy->m_filename, toCopy->m_blockCount * BlockSize, tmpHandle);
+    if (!tmpHandle)
+        return false;
+
+    /* Now copy the file information over */
+    File* copyDest = dest._fileFromHandle(tmpHandle);
+    File copyTmp = *copyDest;
+    *copyDest = *toCopy;
+    copyDest->m_firstBlock = copyTmp.m_firstBlock;
+    copyDest->m_copyCounter++;
+
+    /* Finally lets get the data copied over! */
+    uint32_t len = toCopy->m_blockCount * BlockSize;
+    uint32_t oldPos = tell(fh);
+    seek(fh, 0, SeekOrigin::Begin);
+    while (len > 0)
+    {
+        uint8_t tmp[BlockSize];
+        read(fh, tmp, BlockSize);
+        dest.write(tmpHandle, tmp, BlockSize);
+        len -= BlockSize;
+    }
+
+    seek(fh, oldPos, SeekOrigin::Begin);
+    return true;
+}
+
+bool Card::moveFileTo(FileHandle& fh, Card& dest)
+{
+    if (copyFileTo(fh, dest) && canMove(fh))
+    {
+        deleteFile(fh);
+        return true;
+    }
+
+    return false;
+}
+#endif
+
+void CardRawFile::setCurrentGame(const char* game) {
+  if (game == nullptr) {
+    std::memset(m_game, 0, sizeof(m_game));
+    return;
+  }
+
+  constexpr size_t copy_amount = sizeof(m_game) - 1;
+  if (std::strlen(game) != copy_amount) {
+    return;
+  }
+
+  std::memcpy(m_game, game, copy_amount);
+}
+
+const uint8_t* CardRawFile::getCurrentGame() const {
+  if (std::strlen(m_game) == sizeof(m_game) - 1) {
+    return reinterpret_cast<const uint8_t*>(m_game);
+  }
+
+  return nullptr;
+}
+
+void CardRawFile::setCurrentMaker(const char* maker) {
+  if (maker == nullptr) {
+    std::memset(m_maker, 0, sizeof(m_maker));
+    return;
+  }
+
+  constexpr size_t copy_amount = sizeof(m_maker) - 1;
+  if (std::strlen(maker) != copy_amount) {
+    return;
+  }
+
+  std::memcpy(m_maker, maker, copy_amount);
+}
+
+const uint8_t* CardRawFile::getCurrentMaker() const {
+  if (std::strlen(m_maker) == sizeof(m_maker) - 1) {
+    return reinterpret_cast<const uint8_t*>(m_maker);
+  }
+
+  return nullptr;
+}
+
+void CardRawFile::getSerial(uint64_t& serial) {
+  m_ch._swapEndian();
+
+  std::array<uint32_t, 8> serialBuf{};
+  for (size_t i = 0; i < serialBuf.size(); i++) {
+    serialBuf[i] = bswap(*reinterpret_cast<uint32_t*>(m_ch.raw.data() + (i * 4)));
+  }
+  serial = static_cast<uint64_t>(serialBuf[0] ^ serialBuf[2] ^ serialBuf[4] ^ serialBuf[6]) << 32 |
+           (serialBuf[1] ^ serialBuf[3] ^ serialBuf[5] ^ serialBuf[7]);
+
+  m_ch._swapEndian();
+}
+
+void CardRawFile::getChecksum(uint16_t& checksum, uint16_t& inverse) const {
+  checksum = m_ch.m_checksum;
+  inverse = m_ch.m_checksumInv;
+}
+
+void CardRawFile::getFreeBlocks(int32_t& bytesNotUsed, int32_t& filesNotUsed) const {
+  bytesNotUsed = m_bats[m_currentBat].numFreeBlocks() * 0x2000;
+  filesNotUsed = m_dirs[m_currentDir].numFreeFiles();
+}
+
+void CardRawFile::getEncoding(uint16_t& encoding) const { encoding = m_ch.m_encoding; }
+
+ECardResult CardRawFile::format(ECardSlot id, ECardSize size, EEncoding encoding) {
+  m_ch.raw.fill(0xFF);
+
+  uint64_t rand = static_cast<uint64_t>(getGCTime());
+  m_ch.m_formatTime = rand;
+  for (size_t i = 0; i < m_ch.m_serial.size(); i++) {
+    rand = (((rand * static_cast<uint64_t>(0x41c64e6d)) + static_cast<uint64_t>(0x3039)) >> 16);
+    m_ch.m_serial[i] = static_cast<uint8_t>(g_SRAM.flash_id[uint32_t(id)][i] + uint32_t(rand));
+    rand = (((rand * static_cast<uint64_t>(0x41c64e6d)) + static_cast<uint64_t>(0x3039)) >> 16);
+    rand &= static_cast<uint64_t>(0x7fffULL);
+  }
+
+  m_ch.m_sramBias = static_cast<int32_t>(bswap(g_SRAM.counter_bias));
+  m_ch.m_sramLanguage = static_cast<uint32_t>(g_SRAM.lang);
+  m_ch.m_unknown = 0; /* 1 works for slot A, 0 both */
+  m_ch.m_deviceId = 0;
+  m_ch.m_sizeMb = static_cast<uint16_t>(size);
+  m_maxBlock = m_ch.m_sizeMb * MbitToBlocks;
+  m_ch.m_encoding = static_cast<uint16_t>(encoding);
+  _updateChecksum();
+  m_dirs[0] = Directory();
+  m_dirs[1] = m_dirs[0];
+  m_bats[0] = BlockAllocationTable(static_cast<uint32_t>(size) * MbitToBlocks);
+  m_bats[1] = m_bats[0];
+  m_currentDir = 1;
+  m_currentBat = 1;
+
+  m_dirty = false;
+  auto writer = io::open_atomic_file(m_filename);
+  bool ok = writer && _writeMetadata(writer.get());
+  std::array<uint8_t, BlockSize> emptyBlock;
+  emptyBlock.fill(0xFF);
+  for (uint32_t block = FSTBlocks; ok && block < m_maxBlock; ++block) {
+    ok = io::write_at(writer.get(), block * BlockSize, emptyBlock.data(), emptyBlock.size());
+  }
+  if (!ok || !writer.commit()) {
+    open(m_filename);
+    return ECardResult::IOERROR;
+  }
+  m_fileHandle = FileIO{m_filename};
+  m_opened = true;
+  return m_fileHandle ? ECardResult::READY : ECardResult::IOERROR;
+}
+
+ProbeResults CardRawFile::probeCardFile(const std::filesystem::path& filename) {
+  if (!std::filesystem::exists(filename))
+    return {ECardResult::NOCARD, 0, 0};
+  return {ECardResult::READY, static_cast<uint32_t>(std::filesystem::file_size(filename) / BlockSize) / MbitToBlocks,
+          BlockSize};
+}
+
+size_t CardRawFile::extractGci(const char* filename, void* output, const size_t capacity) {
+  if (filename == nullptr) {
+    return 0;
+  }
+  FileHandle handle;
+  if (openFile(filename, handle) != ECardResult::READY) {
+    return 0;
+  }
+
+  const File* file = _fileFromHandle(handle);
+  if (file == nullptr) {
+    return 0;
+  }
+  if (m_maxBlock <= FSTBlocks || file->m_blockCount == 0 || file->m_blockCount > m_maxBlock - FSTBlocks) {
+    return 0;
+  }
+  const size_t required = sizeof(File) + static_cast<size_t>(file->m_blockCount) * BlockSize;
+  if (output == nullptr || capacity < required) {
+    return required;
+  }
+
+  File header = *file;
+  header.swapEndian();
+  std::memcpy(output, &header, sizeof(header));
+  seek(handle, 0, SeekOrigin::Begin);
+  if (fileRead(handle, static_cast<uint8_t*>(output) + sizeof(File), required - sizeof(File)) != ECardResult::READY) {
+    return 0;
+  }
+  return required;
+}
+
+bool CardRawFile::insertGci(const void* data, const size_t size, const bool replace) {
+  if (data == nullptr || size < sizeof(File) || (size - sizeof(File)) % BlockSize != 0) {
+    return false;
+  }
+
+  File imported;
+  std::memcpy(&imported, data, sizeof(imported));
+  imported.swapEndian();
+  const size_t blockCount = (size - sizeof(File)) / BlockSize;
+  if (blockCount == 0 || imported.m_blockCount != blockCount ||
+      std::memchr(imported.m_game, '\0', sizeof(imported.m_game)) != nullptr ||
+      std::memchr(imported.m_maker, '\0', sizeof(imported.m_maker)) != nullptr || imported.m_filename[0] == '\0') {
+    return false;
+  }
+
+  char game[5]{};
+  char maker[3]{};
+  char filename[sizeof(imported.m_filename) + 1]{};
+  std::memcpy(game, imported.m_game, sizeof(imported.m_game));
+  std::memcpy(maker, imported.m_maker, sizeof(imported.m_maker));
+  std::memcpy(filename, imported.m_filename, sizeof(imported.m_filename));
+  std::fill(std::begin(m_game), std::end(m_game), '\0');
+  std::fill(std::begin(m_maker), std::end(m_maker), '\0');
+  std::memcpy(m_game, game, sizeof(imported.m_game));
+  std::memcpy(m_maker, maker, sizeof(imported.m_maker));
+
+  FileHandle existing;
+  const auto existingResult = openFile(filename, existing);
+  if (existingResult == ECardResult::READY) {
+    if (!replace) {
+      return false;
+    }
+    const File* existingFile = _fileFromHandle(existing);
+    if (existingFile == nullptr ||
+        blockCount > static_cast<size_t>(m_bats[m_currentBat].numFreeBlocks()) + existingFile->m_blockCount) {
+      return false;
+    }
+    deleteFile(existing);
+  } else if (existingResult != ECardResult::NOFILE) {
+    return false;
+  }
+
+  FileHandle handle;
+  if (createFile(filename, size - sizeof(File), handle) != ECardResult::READY) {
+    open(m_filename);
+    return false;
+  }
+
+  Directory dir = m_dirs[m_currentDir];
+  File* destination = dir.getFile(handle.idx);
+  if (destination == nullptr) {
+    open(m_filename);
+    return false;
+  }
+  const uint16_t firstBlock = destination->m_firstBlock;
+  *destination = imported;
+  destination->m_firstBlock = firstBlock;
+  destination->m_blockCount = static_cast<uint16_t>(blockCount);
+  _updateDirAndBat(dir, m_bats[m_currentBat]);
+
+  if (fileWrite(handle, static_cast<const uint8_t*>(data) + sizeof(File), size - sizeof(File)) != ECardResult::READY) {
+    return false;
+  }
+  return commit() == ECardResult::READY;
+}
+
+bool CardRawFile::_writeMetadata(SDL_IOStream* stream) {
+  m_tmpCh = m_ch;
+  m_tmpCh._swapEndian();
+  if (!io::write_at(stream, 0, m_tmpCh.raw.data(), BlockSize)) {
+    return false;
+  }
+  for (size_t i = 0; i < m_dirs.size(); ++i) {
+    m_tmpDirs[i] = m_dirs[i];
+    m_tmpDirs[i].updateChecksum();
+    m_tmpDirs[i].swapEndian();
+    if (!io::write_at(stream, BlockSize * (1 + i), m_tmpDirs[i].raw.data(), BlockSize)) {
+      return false;
+    }
+    m_tmpBats[i] = m_bats[i];
+    m_tmpBats[i].updateChecksum();
+    m_tmpBats[i].swapEndian();
+    if (!io::write_at(stream, BlockSize * (3 + i), m_tmpBats[i].raw.data(), BlockSize)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+ECardResult CardRawFile::commit() {
+  if (!m_dirty) {
+    return ECardResult::READY;
+  }
+  auto writer = io::open_atomic_file(m_filename, io::AtomicFileMode::UpdateExisting);
+  if (!writer || !_writeMetadata(writer.get()) || !writer.commit()) {
+    open(m_filename);
+    return ECardResult::IOERROR;
+  }
+  m_dirty = false;
+  return ECardResult::READY;
+}
+
+bool CardRawFile::open(const std::filesystem::path& filepath) {
+  m_opened = false;
+  m_dirty = false;
+  m_filename = filepath;
+  m_fileHandle = FileIO(m_filename);
+  if (m_fileHandle) {
+    if (!m_fileHandle.fileRead(m_ch.raw.data(), BlockSize, 0))
+      return false;
+    if (!m_fileHandle.fileRead(m_dirs[0].raw.data(), BlockSize, BlockSize * 1))
+      return false;
+    if (!m_fileHandle.fileRead(m_dirs[1].raw.data(), BlockSize, BlockSize * 2))
+      return false;
+    if (!m_fileHandle.fileRead(m_bats[0].raw.data(), BlockSize, BlockSize * 3))
+      return false;
+    if (!m_fileHandle.fileRead(m_bats[1].raw.data(), BlockSize, BlockSize * 4))
+      return false;
+    _repairCard();
+    return true;
+  }
+  return false;
+}
+
+void CardRawFile::close() {
+  m_opened = false;
+  if (m_fileHandle) {
+    commit();
+    m_fileHandle = {};
+  }
+}
+
+ECardResult CardRawFile::getError() const {
+  if (!m_fileHandle)
+    return ECardResult::NOCARD;
+
+  ECardResult openRes = const_cast<CardRawFile*>(this)->_pumpOpen();
+  if (openRes != ECardResult::READY)
+    return openRes;
+
+  uint16_t ckSum, ckSumInv;
+  const_cast<CardRawFile&>(*this).m_ch._swapEndian();
+  calculateChecksumBE(reinterpret_cast<const uint16_t*>(m_ch.raw.data()), 0xFE, &ckSum, &ckSumInv);
+  bool res = ckSum == m_ch.m_checksum && ckSumInv == m_ch.m_checksumInv;
+  const_cast<CardRawFile&>(*this).m_ch._swapEndian();
+
+  if (!res)
+    return ECardResult::BROKEN;
+  if (!m_dirs[0].valid() && !m_dirs[1].valid())
+    return ECardResult::BROKEN;
+  if (!m_bats[0].valid() && !m_bats[1].valid())
+    return ECardResult::BROKEN;
+
+  return ECardResult::READY;
+}
+} // namespace aurora::card

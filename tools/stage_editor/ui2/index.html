@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stage Forge</title><link rel="icon" href="workshop.png"><link rel="stylesheet" href="ui2.css">
+<script type="importmap">{"imports":{"three":"../vendor/build/three.module.js","three/addons/":"../vendor/examples/jsm/"}}</script></head>
+<body>
+<header class="bar">
+  <div class="brand"><span class="logo">◈</span><span id="appName">Stage Forge</span></div>
+  <button class="projectSwitch" id="projectSwitch"><span id="projectTitle">Open a project</span><small id="projectMeta"></small><i>▾</i></button>
+  <nav class="workspaces" id="workspaces">
+    <button data-ws="layout" class="on">Layout</button><button data-ws="logic">Logic</button><button data-ws="assets">Assets</button><button data-ws="play">Play</button>
+  </nav>
+  <button class="search" id="openPalette"><span>Search or run a command…</span><kbd>Ctrl K</kbd></button>
+  <div class="grow"></div>
+  <span class="saveState" id="saveState"></span>
+  <button class="ghost" id="stageBtn" title="Stage settings: grades, mission counts, player start, missions">Stage</button>
+  <div class="undoBox"><button class="ghost icon" id="undo" title="Undo (Ctrl Z)" disabled>↶</button><button class="ghost icon" id="redo" title="Redo (Ctrl Shift Z)" disabled>↷</button></div><button class="ghost" id="save">Save</button>
+  <button class="ghost testHere" id="testHere" title="Test from here (F5): save, build and play as Shadow where the camera is (on the floor under it), facing the camera's way, in the game window with sound">▶ Test from here</button>
+  <button class="play" id="playtest" title="Playtest from the stage's start (or the Play from here point)">▶ Playtest</button>
+  <a class="classic" href="../index.html" title="The classic editor, read-only since UI 2 took over (view only, nothing is saved there)">Classic (read-only)</a>
+</header>
+
+<div class="shell" id="shell">
+  <nav class="rail" id="rail">
+    <button data-panel="add" title="Add to stage (drag in)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="railLbl">Add</span></button><button data-panel="outliner" class="on" title="Outliner"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg><span class="railLbl">Outliner</span></button>
+    <button data-panel="zones" title="Zones (stage areas)"><svg viewBox="0 0 24 24"><path d="M3 7l6-3 6 3 6-3v13l-6 3-6-3-6 3z"/><path d="M9 4v13M15 7v13"/></svg><span class="railLbl">Zones</span></button>
+    <button data-panel="layers" title="Route layers (SET files)"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg><span class="railLbl">Layers</span></button>
+    <button data-panel="settings" title="Stage settings (grades, start, missions)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span class="railLbl">Stage</span></button>
+    <button data-panel="issues" title="Issues"><svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg><span class="railLbl">Issues</span><b id="issueBadge" hidden></b></button>
+  </nav>
+
+  <aside class="panel" id="panel">
+    <div class="panelHead"><h2 id="panelTitle">Outliner</h2><span id="panelCount"></span></div>
+    <div id="panelBody"></div>
+  </aside>
+
+  <main class="stage">
+    <div class="viewport" id="viewport">
+      <div class="lens" id="lens"></div>
+      <div class="viewChips" id="viewChips"></div>
+      <canvas class="minimap" id="minimap" width="220" height="220" title="Click to fly there"></canvas>
+      <div class="hint"><b id="hintChunk"></b><button class="keysBtn" id="keysBtn" title="Mouse and keyboard (press ? anywhere)">Keys ?</button></div>
+      <div class="keysCard" id="keysCard" hidden><h4>Moving around</h4><dl><dt>W A S D, Q E</dt><dd>fly (Shift faster, [ ] speed)</dd><dt>left-drag (hold)</dt><dd>look around</dd><dt>middle-drag</dt><dd>orbit</dd><dt>right-drag</dt><dd>pan</dd><dt>wheel</dt><dd>zoom</dd><dt>double-click</dt><dd>fly there</dd><dt>F</dt><dd>focus the selection</dd></dl>
+        <h4>Editing</h4><dl><dt>click</dt><dd>select (Shift: add)</dd><dt>G / R / T</dt><dd>move / rotate / scale</dd><dt>N</dt><dd>snap / magnet on / off</dd><dt>Alt (held)</dt><dd>snap on / off for the moment</dd><dt>Delete</dt><dd>delete</dd><dt>Ctrl D</dt><dd>duplicate</dd><dt>Ctrl Z / Ctrl Shift Z</dt><dd>undo / redo</dd><dt>Ctrl S</dt><dd>save</dd><dt>Ctrl K</dt><dd>search and commands</dd><dt>Esc</dt><dd>cancel / deselect</dd></dl></div>
+      <div class="empty" id="emptyState"><div><h1>Open a project</h1><p>UI 2 reads the same projects as the classic editor.</p><div id="emptyList"></div></div></div>
+    </div>
+    <section class="flow" id="flow">
+      <div class="flowHead"><h3>Stage flow</h3><span>start → checkpoints → goal · each dot is a placement at its point in the run</span></div>
+      <canvas id="flowCanvas"></canvas><div class="tip" id="flowTip" hidden></div>
+    </section>
+  </main>
+
+  <aside class="inspector" id="inspector"><div class="inspEmpty"><div class="glyph">◇</div><p>Select something in the outliner, the flow strip, the minimap or the viewport.</p></div></aside>
+</div>
+
+<div class="paletteWrap" id="paletteWrap" hidden><div class="paletteBox"><input id="paletteInput" placeholder="Jump to an object, class, zone, checkpoint… or type a command" autocomplete="off"><div id="paletteList"></div><footer>↑↓ move · Enter go · Esc close</footer></div></div>
+<div class="modalWrap" id="conflict" hidden><div class="modalBox"><h3>Saved somewhere else</h3><p id="conflictText"></p><div class="modalBtns"><button class="ghost" id="conflictReload">Reload saved version</button><button class="ghost" id="conflictKeep">Overwrite with mine</button><button class="ghost" id="conflictCancel">Cancel</button></div></div></div>
+<div class="modalWrap" id="modelPick" hidden><div class="modalBox"><h3 class="plain">Stage model as geometry</h3><p>Static textured geometry with collision, made from one of this stage's models. It does not get the object's behaviour. Choose a model, then click where it goes.</p><input class="num" id="modelQ" placeholder="Search models" autocomplete="off"><div class="pickList" id="modelList"></div><div class="modalBtns"><button class="ghost" id="modelCancel">Cancel</button></div></div></div>
+<div class="modalWrap" id="imp119" hidden><div class="modalBox wide"><h3 class="plain">Import level / model</h3><div id="imp119Body"></div><div class="modalBtns"><button class="ghost" id="imp119Close">Close</button><button class="play" id="imp119Go">Import</button></div></div></div>
+<div class="modalWrap" id="report" hidden><div class="modalBox wide"><h3 class="plain">Build report</h3><div id="reportBody"></div><div class="modalBtns"><button class="ghost" id="reportClose">Close</button></div></div></div>
+<div class="toast" id="toast" hidden></div>
+<script type="module" src="ui2.js"></script>
+</body></html>

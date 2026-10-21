@@ -1,0 +1,3060 @@
+{
+  "version": 1,
+  "about": [
+    "Stage Workshop node-definition table (roadmap 5a). Owned by track C (UI 2 Logic workspace); track B's events.py emitter reads it. Keep it backward compatible: never rename or remove a node id or a pin name, add new ones instead.",
+    "A node: id (stable), category (event | flow | action | data), label, docs, owners (which graph owners may use it: volume = trigger volume or script object, pad = teleport pad, native = a native SET object, stage = the stage graph, any = all), exec {in: [pin names], out: [pin names]} (white execution pins: they define the order), inputs / outputs (typed data pins), widgets (inline values on the node; an input pin with the same name as a widget overrides it when linked), v3 (how the node compiles to the CURRENT sidecar v3 / events.py graph, or null), vm (true = runs in the bytecode VM of roadmap 5b: the server builds every graph into sidecar v4 when the project uses one; v3 fields are still written for the rest).",
+    "Pin types: exec, bool, number, vector, object, string, any (reroute only). A data input takes one link; an exec output may fan out to several inputs, which run in the order of the links (the same as a v3 'next' edge to several nodes).",
+    "GRAPH SHAPE (plain JSON stored in the project next to its owner; an AI agent may write it directly): owner.logic = {version: 1, nodes: [{id: 'n1', type: '<node id>', x: 40, y: 60, values: {<widget>: <value>}, collapsed: false, title: null}], links: [{id: 'l1', from: 'n1', out: '<output or exec-out pin>', to: 'n2', in: '<input or exec-in pin>'}], groups: [{id: 'g1', title: 'Boost', x: 0, y: 0, w: 400, h: 200, colour: '#7c8aa5'}]}. Owners: a trigger volume or script object (project.triggers[i].logic), a teleport pad or native object (project.objects[i].logic), the stage (project.logic). Object references (widgets of type object) hold the target's id (placement id).",
+    "Compilation today (UI 2, mirrored by events.py v3): each event node and the exec chain after it become the owner's v3 fields. Volume: exactly one event node -> trigger.event / once / cooldown + trigger.graph {nodes: [{id, type: event|condition|action|delay, x, y, ...}], edges: [{from, to, port: next|true|false}]} + trigger.actions (the same chain flattened). Native: every event node -> one entry of object.events [{event, once, cooldown, actions, graph}]. Teleport pad: On touch -> Teleport player to -> pad.target + pad.cooldown. Stage graphs and vm nodes build into sidecar v4 (track B's compiler, track A's VM): owners in the v4 node table are 'stage', 'volume:<id>', 'pad:<id>', 'native:<id>'; live highlight ids are '<owner>/<node id>'. Flow.sequence and flow.reroute are pass-through in v3.",
+    "Live values usable in Branch: @rings @score @lives @hero_score @dark_score @stage_time @player_y @speed (read-only); other names are stage variables set by Set variable.",
+    "needs (optional): 'runtime' = the node is defined and drawn but the game has no code for it yet (track A); the build leaves it out (the chain goes on) and names it in the build warnings. Nodes without 'needs' build.",
+    "templates: ready graphs the Logic workspace inserts (Templates button): {id, label, owners, docs, graph}; ids are renamed on insert. Only nodes that build today are used."
+  ],
+  "pinTypes": {
+    "exec": {
+      "colour": "#f2f4f8",
+      "label": "execution"
+    },
+    "bool": {
+      "colour": "#ff5470",
+      "label": "true / false"
+    },
+    "number": {
+      "colour": "#6ee7a0",
+      "label": "number"
+    },
+    "vector": {
+      "colour": "#ffd34d",
+      "label": "x, y, z"
+    },
+    "object": {
+      "colour": "#4cc9f0",
+      "label": "placement"
+    },
+    "string": {
+      "colour": "#ff8fa3",
+      "label": "text"
+    },
+    "any": {
+      "colour": "#9aa2b5",
+      "label": "any (reroute)"
+    }
+  },
+  "categories": {
+    "event": {
+      "label": "Events",
+      "colour": "#ff4d6d"
+    },
+    "flow": {
+      "label": "Flow",
+      "colour": "#a78bfa"
+    },
+    "action": {
+      "label": "Actions",
+      "colour": "#4cc9f0"
+    },
+    "data": {
+      "label": "Data",
+      "colour": "#6ee7a0"
+    }
+  },
+  "liveValues": [
+    "@rings",
+    "@score",
+    "@lives",
+    "@hero_score",
+    "@dark_score",
+    "@stage_time",
+    "@player_y",
+    "@speed"
+  ],
+  "nodes": [
+    {
+      "id": "event.enter",
+      "category": "event",
+      "label": "On enter",
+      "owners": [
+        "volume"
+      ],
+      "docs": "The player enters this volume.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": true,
+          "label": "Only once"
+        },
+        {
+          "name": "cooldown",
+          "type": "number",
+          "default": 0.1,
+          "label": "Cooldown (s)",
+          "min": 0.05
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "enter"
+      }
+    },
+    {
+      "id": "event.exit",
+      "category": "event",
+      "label": "On exit",
+      "owners": [
+        "volume"
+      ],
+      "docs": "The player leaves this volume.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": true,
+          "label": "Only once"
+        },
+        {
+          "name": "cooldown",
+          "type": "number",
+          "default": 0.1,
+          "label": "Cooldown (s)",
+          "min": 0.05
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "exit"
+      }
+    },
+    {
+      "id": "event.stay",
+      "category": "event",
+      "label": "While inside",
+      "owners": [
+        "volume"
+      ],
+      "docs": "Repeats while the player stays inside, once per cooldown.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        },
+        {
+          "name": "cooldown",
+          "type": "number",
+          "default": 0.5,
+          "label": "Every (s)",
+          "min": 0.05
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "stay"
+      }
+    },
+    {
+      "id": "event.interact",
+      "category": "event",
+      "label": "On interact",
+      "owners": [
+        "volume"
+      ],
+      "docs": "The player presses the action button inside this volume.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        },
+        {
+          "name": "cooldown",
+          "type": "number",
+          "default": 0.5,
+          "label": "Cooldown (s)",
+          "min": 0.05
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "interact"
+      }
+    },
+    {
+      "id": "event.touch",
+      "category": "event",
+      "label": "On touch",
+      "owners": [
+        "pad"
+      ],
+      "docs": "A teleport pad is touched. In v3 a pad can only teleport (connect Teleport player to).",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "cooldown",
+          "type": "number",
+          "default": 1,
+          "label": "Cooldown (s)",
+          "min": 0.05
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "enter",
+        "pad": true
+      }
+    },
+    {
+      "id": "event.spawn",
+      "category": "event",
+      "label": "On spawn",
+      "owners": [
+        "native"
+      ],
+      "docs": "The object comes into range and is created (repeats each time unless Only once).",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "spawn"
+      }
+    },
+    {
+      "id": "event.killed",
+      "category": "event",
+      "label": "On killed",
+      "owners": [
+        "native"
+      ],
+      "docs": "The object is destroyed by the player and stays dead.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "killed"
+      }
+    },
+    {
+      "id": "event.removed",
+      "category": "event",
+      "label": "On removed / collected",
+      "owners": [
+        "native"
+      ],
+      "docs": "The object is removed, collected or used (rings, boxes, items).",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "removed"
+      }
+    },
+    {
+      "id": "event.despawn",
+      "category": "event",
+      "label": "On despawn",
+      "owners": [
+        "native"
+      ],
+      "docs": "The object goes out of range and is unloaded.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "once",
+          "type": "bool",
+          "default": false,
+          "label": "Only once"
+        }
+      ],
+      "v3": {
+        "kind": "event",
+        "event": "despawn"
+      }
+    },
+    {
+      "id": "event.stage_start",
+      "category": "event",
+      "label": "Stage start",
+      "owners": [
+        "stage"
+      ],
+      "docs": "Runs once when the player becomes active.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "event.every",
+      "category": "event",
+      "label": "Every N seconds",
+      "owners": [
+        "any"
+      ],
+      "docs": "Repeats on a timer (simulation seconds, the same at any frame rate).",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 1,
+          "label": "Seconds",
+          "min": 0.05
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "event.custom",
+      "category": "event",
+      "label": "On custom event",
+      "owners": [
+        "any"
+      ],
+      "docs": "Runs when Send custom event fires with the same name.",
+      "exec": {
+        "in": [],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_event",
+          "label": "Name"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.branch",
+      "category": "flow",
+      "label": "Branch",
+      "owners": [
+        "any"
+      ],
+      "docs": "Compares a stage variable or live game value with a number and continues on True or False.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "true",
+          "false"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "variable",
+          "type": "string",
+          "default": "@rings",
+          "label": "Variable / live value",
+          "suggest": "liveValues"
+        },
+        {
+          "name": "compare",
+          "type": "enum",
+          "options": [
+            "==",
+            "!=",
+            "<",
+            "<=",
+            ">",
+            ">="
+          ],
+          "default": "==",
+          "label": "Compare"
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "default": 0,
+          "label": "Number"
+        }
+      ],
+      "v3": {
+        "kind": "condition",
+        "fields": {
+          "variable": "variable",
+          "compare": "compare",
+          "value": "value"
+        }
+      }
+    },
+    {
+      "id": "flow.delay",
+      "category": "flow",
+      "label": "Delay",
+      "owners": [
+        "any"
+      ],
+      "docs": "Waits, then continues. In v3 the waits along a chain add up from the event (max 3600 s).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "seconds",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 1,
+          "label": "Seconds",
+          "min": 0
+        }
+      ],
+      "v3": {
+        "kind": "delay",
+        "fields": {
+          "seconds": "seconds"
+        }
+      }
+    },
+    {
+      "id": "flow.sequence",
+      "category": "flow",
+      "label": "Sequence",
+      "owners": [
+        "any"
+      ],
+      "docs": "Runs Then 0, Then 1, ... in order.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then 0",
+          "then 1",
+          "then 2",
+          "then 3"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [],
+      "v3": {
+        "kind": "pass"
+      }
+    },
+    {
+      "id": "flow.reroute",
+      "category": "flow",
+      "label": "Reroute",
+      "owners": [
+        "any"
+      ],
+      "docs": "A dot to tidy wires; passes exec or data through.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "in",
+          "type": "any"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out",
+          "type": "any"
+        }
+      ],
+      "widgets": [],
+      "v3": {
+        "kind": "pass"
+      }
+    },
+    {
+      "id": "flow.do_once",
+      "category": "flow",
+      "label": "Do once",
+      "owners": [
+        "any"
+      ],
+      "docs": "Lets the first run through, blocks later ones until Reset.",
+      "exec": {
+        "in": [
+          "exec",
+          "reset"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.gate",
+      "category": "flow",
+      "label": "Gate",
+      "owners": [
+        "any"
+      ],
+      "docs": "Passes Enter through only while open (Open / Close / Toggle).",
+      "exec": {
+        "in": [
+          "enter",
+          "open",
+          "close",
+          "toggle"
+        ],
+        "out": [
+          "exit"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "start_open",
+          "type": "bool",
+          "default": true,
+          "label": "Starts open"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.counter",
+      "category": "flow",
+      "label": "Counter",
+      "owners": [
+        "any"
+      ],
+      "docs": "Counts runs; continues on Reached when the count reaches the target.",
+      "exec": {
+        "in": [
+          "exec",
+          "reset"
+        ],
+        "out": [
+          "then",
+          "reached"
+        ]
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "count",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "target",
+          "type": "number",
+          "default": 3,
+          "label": "Target",
+          "min": 1
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.wait_until",
+      "category": "flow",
+      "label": "Wait until",
+      "owners": [
+        "any"
+      ],
+      "docs": "Pauses this chain until the condition is true.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "condition",
+          "type": "bool"
+        }
+      ],
+      "outputs": [],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.random",
+      "category": "flow",
+      "label": "Random branch",
+      "owners": [
+        "any"
+      ],
+      "docs": "Continues on A or B with the given chance of A.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "a",
+          "b"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "chance",
+          "type": "number",
+          "default": 0.5,
+          "label": "Chance of A",
+          "min": 0,
+          "max": 1
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.teleport",
+      "category": "action",
+      "label": "Teleport player to",
+      "owners": [
+        "any"
+      ],
+      "docs": "Moves the player to a placement's position.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "destination",
+          "type": "object"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "destination",
+          "type": "object",
+          "default": "",
+          "label": "Destination"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "teleport",
+        "fields": {
+          "target": "destination"
+        }
+      }
+    },
+    {
+      "id": "action.set_speed",
+      "category": "action",
+      "label": "Set speed",
+      "owners": [
+        "any"
+      ],
+      "docs": "Sets the player's velocity (units per second; z negative = forward on most stages).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "velocity",
+          "type": "vector"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "velocity",
+          "type": "vector",
+          "default": [
+            0,
+            0,
+            -150
+          ],
+          "label": "Velocity x, y, z"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "set_speed",
+        "fields": {
+          "vector": "velocity"
+        }
+      }
+    },
+    {
+      "id": "action.rings",
+      "category": "action",
+      "label": "Give rings",
+      "owners": [
+        "any"
+      ],
+      "docs": "Adds (or with a negative number removes) rings.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 10,
+          "label": "Rings"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "rings",
+        "fields": {
+          "value": "amount"
+        }
+      }
+    },
+    {
+      "id": "action.score",
+      "category": "action",
+      "label": "Add score",
+      "owners": [
+        "any"
+      ],
+      "docs": "Adds points to the score.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "points",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "points",
+          "type": "number",
+          "default": 100,
+          "label": "Points"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "score",
+        "fields": {
+          "value": "points"
+        }
+      }
+    },
+    {
+      "id": "action.set_variable",
+      "category": "action",
+      "label": "Set variable",
+      "owners": [
+        "any"
+      ],
+      "docs": "Sets a stage variable (read by Branch). Names starting with @ are read-only game values.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_variable",
+          "label": "Variable"
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "default": 1,
+          "label": "Value"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "set_variable",
+        "fields": {
+          "name": "name",
+          "value": "value"
+        }
+      }
+    },
+    {
+      "id": "action.enable",
+      "category": "action",
+      "label": "Enable volume",
+      "owners": [
+        "any"
+      ],
+      "docs": "Turns a trigger volume (or an object event) on.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "volume",
+          "type": "object"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "volume",
+          "type": "object",
+          "default": "",
+          "label": "Volume",
+          "filter": "volume"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "enable",
+        "fields": {
+          "target": "volume"
+        }
+      }
+    },
+    {
+      "id": "action.disable",
+      "category": "action",
+      "label": "Disable volume",
+      "owners": [
+        "any"
+      ],
+      "docs": "Turns a trigger volume (or an object event) off.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "volume",
+          "type": "object"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "volume",
+          "type": "object",
+          "default": "",
+          "label": "Volume",
+          "filter": "volume"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "disable",
+        "fields": {
+          "target": "volume"
+        }
+      }
+    },
+    {
+      "id": "action.lighting",
+      "category": "action",
+      "label": "Lighting trigger on / off",
+      "owners": [
+        "any"
+      ],
+      "docs": "Turns a named lighting trigger on or off (sidecar action 6 -> lighting::set_environment_trigger). Lighting rules with that trigger (a region's Trigger, a lighting profile, lighting_profiles.ini trigger=) apply while it is on and blend over their transition seconds (0-30). All triggers reset when a stage loads; at most 64 at a time.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_light",
+          "label": "Trigger"
+        },
+        {
+          "name": "on",
+          "type": "bool",
+          "default": true,
+          "label": "On"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "lighting",
+        "fields": {
+          "name": "name",
+          "value": "on"
+        }
+      }
+    },
+    {
+      "id": "action.set_lighting_profile",
+      "category": "action",
+      "label": "Set lighting profile",
+      "owners": [
+        "any"
+      ],
+      "docs": "Turns a lighting profile on (or off) by its trigger name: Stage settings -> Lighting profiles (rules with no bounds) or a lighting region with that Trigger (only inside its box). The same sidecar action 6 as Lighting trigger; the profile blends in over its Blend seconds. The highest priority wins where several apply.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "profile",
+          "type": "string",
+          "default": "",
+          "label": "Profile (trigger)"
+        },
+        {
+          "name": "on",
+          "type": "bool",
+          "default": true,
+          "label": "On"
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "lighting",
+        "fields": {
+          "name": "profile",
+          "value": "on"
+        }
+      }
+    },
+    {
+      "id": "action.fade_sun",
+      "category": "action",
+      "label": "Fade sun",
+      "owners": [
+        "any"
+      ],
+      "docs": "Fades the sun to Strength (0-3; 1 = the stage's sun) over Seconds. Builds a lighting rule of its own (trigger ws_fade_sun_<owner>_<node>, sun_strength, transition = Seconds, high priority) that this node turns on with action 6. Undo it with Lighting trigger off and that name, or another Fade sun. Runtime limits: the rule changes sun_strength only; the sun direction / tint need a lighting profile.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "strength",
+          "type": "number"
+        },
+        {
+          "name": "seconds",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "strength",
+          "type": "number",
+          "default": 0.3,
+          "label": "Strength",
+          "min": 0
+        },
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 2,
+          "label": "Seconds",
+          "min": 0
+        }
+      ],
+      "v3": {
+        "kind": "action",
+        "type": "lighting",
+        "fields": {}
+      }
+    },
+    {
+      "id": "action.send",
+      "category": "action",
+      "label": "Send custom event",
+      "owners": [
+        "any"
+      ],
+      "docs": "Fires On custom event nodes with the same name.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_event",
+          "label": "Name"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.spawn",
+      "category": "action",
+      "label": "Spawn object",
+      "owners": [
+        "any"
+      ],
+      "docs": "Creates a copy of a template: a native object (SET record) placed in this project, usually a hidden pool placement (activation distance 0), at Position. Spawned outputs the new object (for Move / Destroy). The build refuses a template that is not a native record.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "template",
+          "type": "object"
+        },
+        {
+          "name": "at",
+          "type": "vector"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "spawned",
+          "type": "object"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "template",
+          "type": "object",
+          "default": "",
+          "label": "Template",
+          "filter": "native"
+        },
+        {
+          "name": "at",
+          "type": "vector",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "label": "Position"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.destroy",
+      "category": "action",
+      "label": "Destroy object",
+      "owners": [
+        "any"
+      ],
+      "docs": "Removes a live native object (one placed in this project, or one Spawn made).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "target",
+          "type": "object"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "target",
+          "type": "object",
+          "default": "",
+          "label": "Object",
+          "filter": "native"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.move",
+      "category": "action",
+      "label": "Move object",
+      "owners": [
+        "any"
+      ],
+      "docs": "Moves a live native object to To (x, y, z) over Seconds (0 = at once).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "target",
+          "type": "object"
+        },
+        {
+          "name": "to",
+          "type": "vector"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "target",
+          "type": "object",
+          "default": "",
+          "label": "Object",
+          "filter": "native"
+        },
+        {
+          "name": "to",
+          "type": "vector",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "label": "To"
+        },
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 1,
+          "label": "Seconds",
+          "min": 0
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.message",
+      "category": "action",
+      "label": "Log message",
+      "owners": [
+        "any"
+      ],
+      "docs": "Logs the text (on-screen text needs the HUD research).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "text",
+          "type": "string",
+          "default": "Hello",
+          "label": "Text"
+        },
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 3,
+          "label": "Seconds"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.self",
+      "category": "data",
+      "label": "Self",
+      "owners": [
+        "volume",
+        "pad",
+        "native"
+      ],
+      "docs": "The placement that owns this graph.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "self",
+          "type": "object"
+        }
+      ],
+      "widgets": [],
+      "v3": {
+        "kind": "const",
+        "value": "owner"
+      }
+    },
+    {
+      "id": "data.object",
+      "category": "data",
+      "label": "Placement",
+      "owners": [
+        "any"
+      ],
+      "docs": "A reference to one placement of this stage.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "object",
+          "type": "object"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "object",
+          "type": "object",
+          "default": "",
+          "label": "Placement"
+        }
+      ],
+      "v3": {
+        "kind": "const",
+        "widget": "object"
+      }
+    },
+    {
+      "id": "data.number",
+      "category": "data",
+      "label": "Number",
+      "owners": [
+        "any"
+      ],
+      "docs": "A constant number.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "number",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "number",
+          "type": "number",
+          "default": 0,
+          "label": "Value"
+        }
+      ],
+      "v3": {
+        "kind": "const",
+        "widget": "number"
+      }
+    },
+    {
+      "id": "data.vector",
+      "category": "data",
+      "label": "Vector",
+      "owners": [
+        "any"
+      ],
+      "docs": "A constant x, y, z.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "vector",
+          "type": "vector"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "vector",
+          "type": "vector",
+          "default": [
+            0,
+            0,
+            0
+          ],
+          "label": "x, y, z"
+        }
+      ],
+      "v3": {
+        "kind": "const",
+        "widget": "vector"
+      }
+    },
+    {
+      "id": "data.text",
+      "category": "data",
+      "label": "Text",
+      "owners": [
+        "any"
+      ],
+      "docs": "A constant text.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "text",
+          "type": "string",
+          "default": "",
+          "label": "Text"
+        }
+      ],
+      "v3": {
+        "kind": "const",
+        "widget": "text"
+      }
+    },
+    {
+      "id": "data.live",
+      "category": "data",
+      "label": "Game value",
+      "owners": [
+        "any"
+      ],
+      "docs": "A live game value (rings, score, speed...) as a number.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "value",
+          "type": "enum",
+          "options": [
+            "@rings",
+            "@score",
+            "@lives",
+            "@hero_score",
+            "@dark_score",
+            "@stage_time",
+            "@player_y",
+            "@speed"
+          ],
+          "default": "@rings",
+          "label": "Value"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.get_variable",
+      "category": "data",
+      "label": "Get variable",
+      "owners": [
+        "any"
+      ],
+      "docs": "A stage variable's current value.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_variable",
+          "label": "Variable"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.compare",
+      "category": "data",
+      "label": "Compare",
+      "owners": [
+        "any"
+      ],
+      "docs": "A op B as true / false.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "type": "number"
+        },
+        {
+          "name": "b",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "bool"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "op",
+          "type": "enum",
+          "options": [
+            "==",
+            "!=",
+            "<",
+            "<=",
+            ">",
+            ">="
+          ],
+          "default": ">",
+          "label": "Op"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "default": 0,
+          "label": "B"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.math",
+      "category": "data",
+      "label": "Math",
+      "owners": [
+        "any"
+      ],
+      "docs": "A op B.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "type": "number"
+        },
+        {
+          "name": "b",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "op",
+          "type": "enum",
+          "options": [
+            "+",
+            "-",
+            "*",
+            "/",
+            "min",
+            "max"
+          ],
+          "default": "+",
+          "label": "Op"
+        },
+        {
+          "name": "b",
+          "type": "number",
+          "default": 1,
+          "label": "B"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.player_position",
+      "category": "data",
+      "label": "Player position",
+      "owners": [
+        "any"
+      ],
+      "docs": "Where the player is.",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "position",
+          "type": "vector"
+        }
+      ],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.object_position",
+      "category": "data",
+      "label": "Object position",
+      "owners": [
+        "any"
+      ],
+      "docs": "Where a live object is (roadmap 5c).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "target",
+          "type": "object"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "position",
+          "type": "vector"
+        },
+        {
+          "name": "alive",
+          "type": "bool"
+        }
+      ],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.for_loop",
+      "category": "flow",
+      "label": "For loop",
+      "owners": [
+        "any"
+      ],
+      "docs": "Runs Body Count times (Index 0, 1, 2 ...), then Completed. Each pass starts one frame after the last; a Delay inside the body does not hold the loop (the passes overlap).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "body",
+          "completed"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "count",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "index",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "count",
+          "type": "number",
+          "default": 3,
+          "label": "Count",
+          "min": 0,
+          "max": 1000
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.while_loop",
+      "category": "flow",
+      "label": "While loop",
+      "owners": [
+        "any"
+      ],
+      "docs": "Runs Body once a frame while the condition is true (at most Max passes), then Completed.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "body",
+          "completed"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "condition",
+          "type": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "index",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "max",
+          "type": "number",
+          "default": 1000,
+          "label": "Max passes",
+          "min": 1,
+          "max": 100000
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.add_variable",
+      "category": "action",
+      "label": "Add to variable",
+      "owners": [
+        "any"
+      ],
+      "docs": "Adds Amount to a stage variable (negative = subtract). Counters, combos, lives of your own.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_variable",
+          "label": "Variable"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "default": 1,
+          "label": "Amount"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.and",
+      "category": "data",
+      "label": "And",
+      "owners": [
+        "any"
+      ],
+      "docs": "True when both are true (not 0).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "type": "bool"
+        },
+        {
+          "name": "b",
+          "type": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "bool"
+        }
+      ],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.or",
+      "category": "data",
+      "label": "Or",
+      "owners": [
+        "any"
+      ],
+      "docs": "True when either is true (not 0).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "type": "bool"
+        },
+        {
+          "name": "b",
+          "type": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "bool"
+        }
+      ],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.not",
+      "category": "data",
+      "label": "Not",
+      "owners": [
+        "any"
+      ],
+      "docs": "True when A is false (0).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "a",
+          "type": "bool"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "result",
+          "type": "bool"
+        }
+      ],
+      "widgets": [],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.random_range",
+      "category": "data",
+      "label": "Random number",
+      "owners": [
+        "any"
+      ],
+      "docs": "A random number from Min to Max (a new one every time it is read).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [
+        {
+          "name": "min",
+          "type": "number"
+        },
+        {
+          "name": "max",
+          "type": "number"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "min",
+          "type": "number",
+          "default": 0,
+          "label": "Min"
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "default": 1,
+          "label": "Max"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.timer_start",
+      "category": "action",
+      "label": "Start timer",
+      "owners": [
+        "any"
+      ],
+      "docs": "Starts (or restarts) a named countdown of Seconds on the stage clock. Read it with Timer left; wait for it with Wait for timer.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "seconds",
+          "type": "number"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "timer",
+          "label": "Timer"
+        },
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 30,
+          "label": "Seconds",
+          "min": 0
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "data.timer_left",
+      "category": "data",
+      "label": "Timer left",
+      "owners": [
+        "any"
+      ],
+      "docs": "Seconds left on a named timer (0 when done or never started).",
+      "exec": {
+        "in": [],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "seconds",
+          "type": "number"
+        }
+      ],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "timer",
+          "label": "Timer"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "flow.wait_timer",
+      "category": "flow",
+      "label": "Wait for timer",
+      "owners": [
+        "any"
+      ],
+      "docs": "Pauses this chain until the named timer reaches 0.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "name",
+          "type": "string",
+          "default": "timer",
+          "label": "Timer"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.hud_text",
+      "category": "action",
+      "label": "Show text",
+      "owners": [
+        "any"
+      ],
+      "docs": "Big text on the screen for Seconds (a title, a hint, a countdown). Shown in the centre (Where is not used yet).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [
+        {
+          "name": "text",
+          "type": "string"
+        }
+      ],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "text",
+          "type": "string",
+          "default": "Go!",
+          "label": "Text"
+        },
+        {
+          "name": "seconds",
+          "type": "number",
+          "default": 3,
+          "label": "Seconds",
+          "min": 0.1
+        },
+        {
+          "name": "place",
+          "type": "enum",
+          "default": "centre",
+          "label": "Where",
+          "options": [
+            "top",
+            "centre",
+            "bottom"
+          ]
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.hud_value",
+      "category": "action",
+      "label": "Show value on HUD",
+      "owners": [
+        "any"
+      ],
+      "docs": "Keeps \"Label: value\" of a variable on the screen (a kill count, a timer) until the Hide input runs.",
+      "exec": {
+        "in": [
+          "exec",
+          "hide"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "label",
+          "type": "string",
+          "default": "Enemies",
+          "label": "Label"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "default": "my_variable",
+          "label": "Variable"
+        },
+        {
+          "name": "slot",
+          "type": "enum",
+          "default": "1",
+          "label": "HUD line",
+          "options": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.mission_complete",
+      "category": "action",
+      "label": "Complete mission",
+      "owners": [
+        "any"
+      ],
+      "docs": "Completes the route's mission the game's own way (finish pose, results screen).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "route",
+          "type": "enum",
+          "default": "neutral",
+          "label": "Route",
+          "options": [
+            "neutral",
+            "hero",
+            "dark"
+          ]
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.mission_fail",
+      "category": "action",
+      "label": "Fail mission",
+      "owners": [
+        "any"
+      ],
+      "docs": "Fails this route's mission the way the game does: that route cannot be completed any more. The stage keeps running (no failed screen); the Reason shows on screen first.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": []
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "route",
+          "type": "enum",
+          "default": "neutral",
+          "label": "Route",
+          "options": [
+            "neutral",
+            "hero",
+            "dark"
+          ]
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "default": "Time up",
+          "label": "Reason"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.play_sound",
+      "category": "action",
+      "label": "Play sound",
+      "owners": [
+        "any"
+      ],
+      "docs": "Plays a sound once: an imported sound effect (WAV / OGG / ADX - the build converts it to WAV). Game cue names are not playable yet.",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "asset",
+          "type": "string",
+          "default": "",
+          "label": "Sound (asset id or cue name)"
+        }
+      ],
+      "v3": null,
+      "vm": true
+    },
+    {
+      "id": "action.link_trigger",
+      "category": "action",
+      "label": "Open link group",
+      "owners": [
+        "any"
+      ],
+      "docs": "Triggers every object with this Link ID, like the game's own trigger objects (a Digital Breakable Tile appears, a gate opens).",
+      "exec": {
+        "in": [
+          "exec"
+        ],
+        "out": [
+          "then"
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "widgets": [
+        {
+          "name": "link",
+          "type": "number",
+          "default": 1,
+          "label": "Link ID",
+          "min": 1,
+          "max": 255
+        }
+      ],
+      "v3": null,
+      "vm": true
+    }
+  ],
+  "example": {
+    "about": "A complete owner.logic graph for a trigger volume (the four-scenario test project's 'Ring zone'): when the player enters (once), if @rings == 0, give 33 rings; a Vector constant drives a Set speed after a 0.5 s delay through a reroute. Paste it in the Logic workspace (Import JSON) on any trigger volume; Export JSON shows the same shape for an existing graph.",
+    "graph": {
+      "version": 1,
+      "nodes": [
+        {
+          "id": "n1",
+          "type": "event.enter",
+          "x": 40,
+          "y": 60,
+          "values": {
+            "once": true,
+            "cooldown": 0.1
+          },
+          "collapsed": false,
+          "title": null
+        },
+        {
+          "id": "n2",
+          "type": "flow.branch",
+          "x": 300,
+          "y": 60,
+          "values": {
+            "variable": "@rings",
+            "compare": "==",
+            "value": 0
+          },
+          "collapsed": false,
+          "title": null
+        },
+        {
+          "id": "n3",
+          "type": "action.rings",
+          "x": 560,
+          "y": 40,
+          "values": {
+            "amount": 33
+          },
+          "collapsed": false,
+          "title": "Starter rings"
+        },
+        {
+          "id": "n4",
+          "type": "flow.delay",
+          "x": 300,
+          "y": 260,
+          "values": {
+            "seconds": 0.5
+          },
+          "collapsed": false,
+          "title": null
+        },
+        {
+          "id": "n5",
+          "type": "data.vector",
+          "x": 300,
+          "y": 420,
+          "values": {
+            "vector": [
+              0,
+              0,
+              -1200
+            ]
+          },
+          "collapsed": false,
+          "title": null
+        },
+        {
+          "id": "n6",
+          "type": "flow.reroute",
+          "x": 500,
+          "y": 430,
+          "values": {},
+          "collapsed": false,
+          "title": null
+        },
+        {
+          "id": "n7",
+          "type": "action.set_speed",
+          "x": 560,
+          "y": 260,
+          "values": {
+            "velocity": [
+              0,
+              0,
+              -150
+            ]
+          },
+          "collapsed": false,
+          "title": "Boost"
+        }
+      ],
+      "links": [
+        {
+          "id": "l1",
+          "from": "n1",
+          "out": "then",
+          "to": "n2",
+          "in": "exec"
+        },
+        {
+          "id": "l2",
+          "from": "n2",
+          "out": "true",
+          "to": "n3",
+          "in": "exec"
+        },
+        {
+          "id": "l3",
+          "from": "n1",
+          "out": "then",
+          "to": "n4",
+          "in": "exec"
+        },
+        {
+          "id": "l4",
+          "from": "n4",
+          "out": "then",
+          "to": "n7",
+          "in": "exec"
+        },
+        {
+          "id": "l5",
+          "from": "n5",
+          "out": "vector",
+          "to": "n6",
+          "in": "in"
+        },
+        {
+          "id": "l6",
+          "from": "n6",
+          "out": "out",
+          "to": "n7",
+          "in": "velocity"
+        }
+      ],
+      "groups": [
+        {
+          "id": "g1",
+          "title": "Starter help",
+          "x": 16,
+          "y": 16,
+          "w": 820,
+          "h": 520,
+          "colour": "#7c8aa5"
+        }
+      ]
+    },
+    "rules": [
+      "Exec wires (out pins of exec type: then / true / false / then N) go to an exec in pin (exec). An exec output may fan out to several inputs; they run in link order.",
+      "A data wire goes from an output pin to an input pin of the same type (number, vector, object, string, bool); a reroute ('in' / 'out', type any) takes the type of what it is wired to. A data input takes one wire; a wired input overrides the widget of the same name.",
+      "values hold widget values by widget name; object widgets hold a placement id; missing values take the widget default.",
+      "Per owner kind: a trigger volume uses exactly one of event.enter / exit / stay / interact (v3); a teleport pad event.touch -> action.teleport only; a native object any of event.spawn / killed / removed / despawn (one object event each); nodes with vm: true are saved but only build once the VM (roadmap 5b) lands.",
+      "Ids: any unique strings; the editor uses n1, n2 ... for nodes, l1 ... for links, g1 ... for groups."
+    ]
+  },
+  "templates": [
+    {
+      "id": "combo_bonus",
+      "label": "Combo bonus",
+      "owners": [
+        "volume"
+      ],
+      "docs": "Each time the player passes through, +1 combo; at 5 a 1000 point bonus and the combo starts again.",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "e",
+            "type": "event.enter",
+            "x": 0,
+            "y": 40,
+            "values": {
+              "once": false,
+              "cooldown": 1
+            }
+          },
+          {
+            "id": "add",
+            "type": "action.add_variable",
+            "x": 260,
+            "y": 40,
+            "values": {
+              "name": "combo",
+              "amount": 1
+            }
+          },
+          {
+            "id": "br",
+            "type": "flow.branch",
+            "x": 520,
+            "y": 40,
+            "values": {
+              "variable": "combo",
+              "compare": ">=",
+              "value": 5
+            }
+          },
+          {
+            "id": "sc",
+            "type": "action.score",
+            "x": 780,
+            "y": 0,
+            "values": {
+              "points": 1000
+            }
+          },
+          {
+            "id": "rs",
+            "type": "action.set_variable",
+            "x": 1040,
+            "y": 0,
+            "values": {
+              "name": "combo",
+              "value": 0
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "e",
+            "out": "then",
+            "to": "add",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "add",
+            "out": "then",
+            "to": "br",
+            "in": "exec"
+          },
+          {
+            "id": "l3",
+            "from": "br",
+            "out": "true",
+            "to": "sc",
+            "in": "exec"
+          },
+          {
+            "id": "l4",
+            "from": "sc",
+            "out": "then",
+            "to": "rs",
+            "in": "exec"
+          }
+        ],
+        "groups": []
+      }
+    },
+    {
+      "id": "countdown",
+      "label": "Countdown challenge",
+      "owners": [
+        "stage"
+      ],
+      "docs": "A 60 second clock from the stage start; when it runs out the message shows (Show text / Fail mission come with the runtime).",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "e",
+            "type": "event.stage_start",
+            "x": 0,
+            "y": 40,
+            "values": {}
+          },
+          {
+            "id": "t",
+            "type": "action.timer_start",
+            "x": 260,
+            "y": 40,
+            "values": {
+              "name": "challenge",
+              "seconds": 60
+            }
+          },
+          {
+            "id": "w",
+            "type": "flow.wait_timer",
+            "x": 520,
+            "y": 40,
+            "values": {
+              "name": "challenge"
+            }
+          },
+          {
+            "id": "m",
+            "type": "action.message",
+            "x": 780,
+            "y": 40,
+            "values": {
+              "text": "Time up!",
+              "seconds": 3
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "e",
+            "out": "then",
+            "to": "t",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "t",
+            "out": "then",
+            "to": "w",
+            "in": "exec"
+          },
+          {
+            "id": "l3",
+            "from": "w",
+            "out": "then",
+            "to": "m",
+            "in": "exec"
+          }
+        ],
+        "groups": []
+      }
+    },
+    {
+      "id": "enemy_wave",
+      "label": "Enemy wave",
+      "owners": [
+        "stage"
+      ],
+      "docs": "On \"wave 1\" three hidden pool enemies spawn (choose them: native enemies placed with activation 0); each enemy's own graph sends \"enemy down\" when killed (On killed -> Send custom event); 3 downs send \"wave 2\".",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "w1",
+            "type": "event.custom",
+            "x": 0,
+            "y": 40,
+            "values": {
+              "name": "wave 1"
+            }
+          },
+          {
+            "id": "seq",
+            "type": "flow.sequence",
+            "x": 260,
+            "y": 40,
+            "values": {}
+          },
+          {
+            "id": "s1",
+            "type": "action.spawn",
+            "x": 520,
+            "y": 0,
+            "values": {}
+          },
+          {
+            "id": "s2",
+            "type": "action.spawn",
+            "x": 520,
+            "y": 170,
+            "values": {}
+          },
+          {
+            "id": "s3",
+            "type": "action.spawn",
+            "x": 520,
+            "y": 340,
+            "values": {}
+          },
+          {
+            "id": "down",
+            "type": "event.custom",
+            "x": 0,
+            "y": 560,
+            "values": {
+              "name": "enemy down"
+            }
+          },
+          {
+            "id": "cnt",
+            "type": "flow.counter",
+            "x": 260,
+            "y": 560,
+            "values": {
+              "target": 3
+            }
+          },
+          {
+            "id": "next",
+            "type": "action.send",
+            "x": 520,
+            "y": 560,
+            "values": {
+              "name": "wave 2"
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "w1",
+            "out": "then",
+            "to": "seq",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "seq",
+            "out": "then 0",
+            "to": "s1",
+            "in": "exec"
+          },
+          {
+            "id": "l3",
+            "from": "seq",
+            "out": "then 1",
+            "to": "s2",
+            "in": "exec"
+          },
+          {
+            "id": "l4",
+            "from": "seq",
+            "out": "then 2",
+            "to": "s3",
+            "in": "exec"
+          },
+          {
+            "id": "l5",
+            "from": "down",
+            "out": "then",
+            "to": "cnt",
+            "in": "exec"
+          },
+          {
+            "id": "l6",
+            "from": "cnt",
+            "out": "reached",
+            "to": "next",
+            "in": "exec"
+          }
+        ],
+        "groups": [
+          {
+            "id": "g1",
+            "title": "Spawn the wave",
+            "x": -30,
+            "y": -40,
+            "w": 800,
+            "h": 520,
+            "colour": "#7c8aa5"
+          },
+          {
+            "id": "g2",
+            "title": "Count the downs",
+            "x": -30,
+            "y": 500,
+            "w": 800,
+            "h": 200,
+            "colour": "#7c8aa5"
+          }
+        ]
+      }
+    },
+    {
+      "id": "random_reward",
+      "label": "Random reward",
+      "owners": [
+        "stage"
+      ],
+      "docs": "Every 15 seconds: half the time 10 more rings, else 500 points.",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "e",
+            "type": "event.every",
+            "x": 0,
+            "y": 40,
+            "values": {
+              "seconds": 15
+            }
+          },
+          {
+            "id": "r",
+            "type": "flow.random",
+            "x": 260,
+            "y": 40,
+            "values": {
+              "chance": 0.5
+            }
+          },
+          {
+            "id": "lv",
+            "type": "data.live",
+            "x": 260,
+            "y": 260,
+            "values": {
+              "value": "@rings"
+            }
+          },
+          {
+            "id": "m",
+            "type": "data.math",
+            "x": 520,
+            "y": 260,
+            "values": {
+              "op": "+",
+              "b": 10
+            }
+          },
+          {
+            "id": "ri",
+            "type": "action.rings",
+            "x": 780,
+            "y": 0,
+            "values": {}
+          },
+          {
+            "id": "sc",
+            "type": "action.score",
+            "x": 780,
+            "y": 160,
+            "values": {
+              "points": 500
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "e",
+            "out": "then",
+            "to": "r",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "r",
+            "out": "a",
+            "to": "ri",
+            "in": "exec"
+          },
+          {
+            "id": "l3",
+            "from": "r",
+            "out": "b",
+            "to": "sc",
+            "in": "exec"
+          },
+          {
+            "id": "l4",
+            "from": "lv",
+            "out": "value",
+            "to": "m",
+            "in": "a"
+          },
+          {
+            "id": "l5",
+            "from": "m",
+            "out": "result",
+            "to": "ri",
+            "in": "amount"
+          }
+        ],
+        "groups": []
+      }
+    },
+    {
+      "id": "repeat_n",
+      "label": "Repeat N times",
+      "owners": [
+        "any"
+      ],
+      "docs": "A For loop: the body runs Count times, one pass a frame, then Completed.",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "e",
+            "type": "event.enter",
+            "x": 0,
+            "y": 40,
+            "values": {
+              "once": true,
+              "cooldown": 0.1
+            }
+          },
+          {
+            "id": "f",
+            "type": "flow.for_loop",
+            "x": 260,
+            "y": 40,
+            "values": {
+              "count": 5
+            }
+          },
+          {
+            "id": "sc",
+            "type": "action.score",
+            "x": 520,
+            "y": 0,
+            "values": {
+              "points": 100
+            }
+          },
+          {
+            "id": "m",
+            "type": "action.message",
+            "x": 520,
+            "y": 170,
+            "values": {
+              "text": "Done",
+              "seconds": 2
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "e",
+            "out": "then",
+            "to": "f",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "f",
+            "out": "body",
+            "to": "sc",
+            "in": "exec"
+          },
+          {
+            "id": "l3",
+            "from": "f",
+            "out": "completed",
+            "to": "m",
+            "in": "exec"
+          }
+        ],
+        "groups": []
+      }
+    },
+    {
+      "id": "kill_count",
+      "label": "Kill counter",
+      "owners": [
+        "native"
+      ],
+      "docs": "On this enemy: when it is killed, +1 to the stage variable \"kills\" and \"enemy down\" for a wave counter.",
+      "graph": {
+        "version": 1,
+        "nodes": [
+          {
+            "id": "k",
+            "type": "event.killed",
+            "x": 0,
+            "y": 40,
+            "values": {
+              "once": true
+            }
+          },
+          {
+            "id": "add",
+            "type": "action.add_variable",
+            "x": 260,
+            "y": 40,
+            "values": {
+              "name": "kills",
+              "amount": 1
+            }
+          },
+          {
+            "id": "snd",
+            "type": "action.send",
+            "x": 520,
+            "y": 40,
+            "values": {
+              "name": "enemy down"
+            }
+          }
+        ],
+        "links": [
+          {
+            "id": "l1",
+            "from": "k",
+            "out": "then",
+            "to": "add",
+            "in": "exec"
+          },
+          {
+            "id": "l2",
+            "from": "add",
+            "out": "then",
+            "to": "snd",
+            "in": "exec"
+          }
+        ],
+        "groups": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+// Windows resources: the program icon (the game's own memory-card emblem, files/mc_icon01.tp).
+1 ICON "shadow.ico"
+// the launcher's Shadow emblem (title-screen emblem, 2K remake, cropped to 513x640) - launcher.cpp
+201 RCDATA "assets/emblem.png"
+// the launcher Home hero art (title-menu background 002_BG, 2K remake, top 80%, 1200x961) - launcher.cpp
+202 RCDATA "assets/hero.png"

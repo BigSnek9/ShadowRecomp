@@ -1,0 +1,13 @@
+# Call-site hooks: <address of an indirect call (bctrl/blrl)> <runtime function void f(Cpu&, uint32_t target)>
+# The function makes the call itself (call_addr). See tools/gen.py load_call_hooks.
+8004ED60 hud_element_draw   # render-tree walker fn_8004EC68: per-object draw (vtable +0x0C) -> 16:9 HUD tags (game_hooks.cpp)
+800CA564 hle_SetCreate   # SetManager activation scan: class create(entry) -> On spawn events (stage_workshop.cpp)
+80456C14 hle_AtomicRenderClump   # #35 capture step 2: RpClumpRender fn_80456BC4 -> atomic->renderCallBack (stage_workshop.cpp)
+8045F418 hle_AtomicRenderWorld   # #35 capture step 2: world-sector atomic loop -> atomic->renderCallBack
+80433AE4 hle_AtomicRenderOther   # #35 capture step 2: game-side atomic render call
+801A109C hle_EnemyHpMax   # #43 research: fn_801A102C (enemy HP bar) -> status->vt[0xB0] = max HP (stage_workshop.cpp, WS_HPLOG)
+801A10C8 hle_EnemyHpCur   # #43 research: fn_801A102C -> status->vt[0xAC] = current HP
+801A7130 hle_EnemyAiUpdate   # #59 per-enemy AI hook: ctrl->vt[0x14](dt) of every enemy (enemy_ai.cpp, WS_AI / ENEMY_AI_LOG)
+801A7110 hle_EnemyAiPre   # #59 probe: ctrl->vt[0x10] pre-update (enemy_ai.cpp, WS_AI_SITE=10)
+801A7170 hle_EnemyAiMid   # #59 probe: ctrl->vt[0x18] (enemy_ai.cpp, WS_AI_SITE=18)
+801A7190 hle_EnemyMoveUpdate   # #59 stand: move->vt[0x0C](dt) skipped for records that stand (enemy_ai.cpp)

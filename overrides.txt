@@ -1,0 +1,154 @@
+# <guest address or symbol name>  <C++ replacement>
+__OSInitMemoryProtection hle_nop
+fn_80371DA0 hle_OSSaveContext
+OSLoadContext hle_OSLoadContext
+exit hle_guest_exit
+_ExitProcess hle_guest_exit
+OSReport hle_OSReport
+fn_80371F54 hle_OSInitContext
+fn_80377DE4 hle_OSExitThread
+fn_80485950 hle_RwCameraSetViewWindow direct   # indirect calls re-submit already-widened windows
+fn_804854DC hle_RwCameraBeginUpdate   # lighting engine: the 3D camera, in FIFO order (widescreen.cpp)
+fn_801E1BD4 hle_FramePace
+fn_80173034 hle_EventUpdate
+fn_802D068C hle_PlayEventUpdate
+fn_802D0668 hle_PlayEventUpdate2
+fn_80494C6C hle_RwShowRaster
+fn_8016EF38 hle_AmmoAdd
+fn_801B64F8 hle_SecondaryHealth
+fn_802C41E0 hle_SelectModeUpdate
+fn_802C4204 hle_SelectModeDtor
+fn_802C42DC hle_SelectModeCtor
+fn_801D82EC hle_SoundFrame
+fn_8009728C hle_PlayerMoveStep   # floor gaps < 1/60 s keep the player grounded (frame_rate.cpp)
+fn_800979E8 hle_PlayerRay   # MOVE_LOG debugging
+fn_800986F0 hle_PlayerSweep   # MOVE_LOG debugging
+fn_80115C60 hle_RocketStep   # rocket flight step per frame -> scaled by frame length (frame_rate.cpp)
+fn_802BCB38 hle_TitleUpdate   # --stage N: launch a stage from the title (game_hooks.cpp)
+fn_802B6470 hle_AdvFolderUpdate   # --stage N: remembers the menu folder state (game_hooks.cpp)
+fn_802C4334 hle_SelectLaunch   # --stage N: Select Mode launcher, stage request replaced (game_hooks.cpp)
+fn_801E3404 hle_PauseUpdate   # pause menu input: X opens the PC settings menu (game_hooks.cpp)
+fn_80395B28 hle_GXBegin   # GXBegin: GXB_TRACE debugging (game_hooks.cpp)
+fn_801D560C hle_SndRequest   # SND_LOG debugging (frame_rate.cpp): logs every sound request
+fn_801D5ED0 hle_SoundEntries   # sound entry frame countdowns once per elapsed 1/60 s (frame_rate.cpp): SFX were cut off 60/fps too soon
+fn_804854B4 hle_RwCameraEndUpdate   # restore authored camera far range after the extended render interval
+fn_804856C8 hle_RwCameraFrustumTestSphere   # conservative off-screen shadow-caster margin; GPU camera stays exact
+fn_800CADBC hle_SetLoadFile        # Stage Workshop: SET layer file -> record index range (stage_workshop.cpp)
+fn_800C9B04 hle_SetKill            # Stage Workshop: native object killed (stays dead) -> On killed events
+fn_800C9AD4 hle_SetRemoveRespawn   # Stage Workshop: object removed, respawns later -> On removed events
+fn_800C9B34 hle_SetRemove          # Stage Workshop: object removed / collected -> On killed / On removed events
+fn_800C9BE8 hle_SetDetach          # Stage Workshop: instance detached outside a remove -> On despawn events
+fn_80014980 hle_ResByIndex18   # #35 capture: ResourceOneFile getters (vtable 8051C6BC) -> WS_CAPTURE lookups (stage_workshop.cpp)
+fn_800148E0 hle_ResByName1C    # #35 capture: get object by name (strcmp over 0x3C-byte rows)
+fn_8001483C hle_ResByIndex20   # #35 capture
+fn_800147C4 hle_ResByName24    # #35 capture
+fn_80014790 hle_ResByIndex28   # #35 capture
+fn_80014718 hle_ResByName2C    # #35 capture
+fn_800146C8 hle_ResByIndex30   # #35 capture
+fn_80014640 hle_ResByName34    # #35 capture
+fn_80014870 hle_ResIndexOf38   # #35 capture: name -> index
+fn_8001461C hle_ResByIndex3C   # #35 capture
+fn_800145A4 hle_ResByName40    # #35 capture
+fn_8004C910 hle_OneFileIndexOf  # #35 capture: raw .one reader, name -> index (0x38-byte rows) (stage_workshop.cpp)
+fn_8004C850 hle_OneFileFind     # #35 capture: raw .one reader, name part -> index
+fn_8006AFEC hle_ReqByIndex18   # #35 capture: ResourceOneFileReq getters (vtable 8051FA3C, stage gdt data) (stage_workshop.cpp)
+fn_8006AF68 hle_ReqByName1C    # #35 capture
+fn_8006AEC8 hle_ReqByIndex20   # #35 capture
+fn_8006AE50 hle_ReqByName24    # #35 capture
+fn_8006AE20 hle_ReqByIndex28   # #35 capture
+fn_8006ADA8 hle_ReqByName2C    # #35 capture
+fn_8006AEF8 hle_ReqIndexOf38   # #35 capture
+fn_8006AD74 hle_ReqByIndex3C   # #35 capture
+fn_8006ACF0 hle_ReqByName40    # #35 capture
+fn_80208978 hle_ArtistType     # #35 capture: ARTISTGADGET/ARTISTWORK type -> row (id at +4, 0x48-byte rows) (stage_workshop.cpp)
+fn_8045F390 hle_SectorAtomics   # #35 capture step 2: world-sector render callback -> every atomic of the sector, culled or not (stage_workshop.cpp)
+fn_8019F944 hle_EnemyStateChange   # Appear Types tests: enemy AI state changes -> log with RTTI names (stage_workshop.cpp, WS_STATELOG)
+fn_800A7700 hle_GravityAdd   # movement tuning: Shadow's gravity x mv_gravity / mv_homing_fall (movement.cpp)
+fn_80093728 hle_IntegrateDrag   # movement tuning: Shadow's air drags (fall speed, air drag) around his integrator call
+fn_8016B384 hle_MissionCreate   # custom stage stats: mission object -> id (custom_stats.cpp)
+fn_8016B2A4 hle_MissionComplete   # custom stage stats: a route cleared (custom_stats.cpp)
+fn_8016B270 hle_MissionFail   # custom stage stats: a mission failed (custom_stats.cpp)
+fn_8016C764 hle_MissionMapBuild   # custom stage: extra mission records (ids 41+) + the slot patch (custom_stats.cpp)
+fn_80236248 hle_BB0210Start   # boss probe: Black Bull 0210 START mode update (boss.cpp, BOSS_LOG)
+fn_80234D78 hle_BB0210Wait   # boss probe: Black Bull 0210 WAIT mode update (boss.cpp, BOSS_LOG)
+fn_8023514C hle_BB0210_CHASE   # boss probe: Black Bull 0210 CHASE mode update (boss.cpp, BOSS_LOG)
+fn_802352EC hle_BB0210_DIZZY   # boss probe: Black Bull 0210 DIZZY mode update (boss.cpp, BOSS_LOG)
+fn_8023520C hle_BB0210_ESCAPE   # boss probe: Black Bull 0210 ESCAPE mode update (boss.cpp, BOSS_LOG)
+fn_802353C8 hle_BB0210_GET_COMBO   # boss probe: Black Bull 0210 GET_COMBO mode update (boss.cpp, BOSS_LOG)
+fn_802354F4 hle_BB0210_GET_ATK   # boss probe: Black Bull 0210 GET_ATK mode update (boss.cpp, BOSS_LOG)
+fn_802357B0 hle_BB0210_BELOW_HALF   # boss probe: Black Bull 0210 BELOW_HALF mode update (boss.cpp, BOSS_LOG)
+fn_8023599C hle_BB0210_DEATH   # boss probe: Black Bull 0210 DEATH mode update (boss.cpp, BOSS_LOG)
+fn_80235C98 hle_BB0210_ATK_BREATH   # boss probe: Black Bull 0210 ATK_BREATH mode update (boss.cpp, BOSS_LOG)
+fn_80235E50 hle_BB0210_ATK_WAVERING   # boss probe: Black Bull 0210 ATK_WAVERING mode update (boss.cpp, BOSS_LOG)
+fn_802360A8 hle_BB0210_ATK_CLOSERANGE   # boss probe: Black Bull 0210 ATK_CLOSERANGE mode update (boss.cpp, BOSS_LOG)
+fn_80236394 hle_BB0210_MOVETEST   # boss probe: Black Bull 0210 MOVETEST mode update (boss.cpp, BOSS_LOG)
+fn_802350B4 hle_BB0210_EDIT   # boss probe: Black Bull 0210 EDIT mode update (boss.cpp, BOSS_LOG)
+fn_800831D8 hle_GroundRun   # movement phase 2: Shadow's acceleration / turning (movement.cpp)
+fn_80080828 hle_FallUpdate   # movement phase 2: Shadow's air control in Fall (movement.cpp)
+fn_800871D8 hle_JumpUpdate   # movement phase 2: Shadow's air control in Jump (movement.cpp)
+fn_800882A4 hle_JumpDashUpdate   # movement phase 2: Shadow's air control in JumpDash (movement.cpp)
+fn_801E848C hle_HomingNearest   # homing rework: Reworked target pick (homing.cpp, hm_mode)
+fn_802EEAF0 hle_CsMissionSpeak   # #102 custom stage: voice 'none' skips the borrowed slot's mission lines (custom_stage_rules.cpp)
+fn_8009EC2C hle_CsPlayerUpdate   # #101 custom stage rules: start rings / lives / time limit (custom_stage_rules.cpp)
+fn_801FAF00 hle_CsTalk   # #102 custom stage: the slot's player hint lines skipped (voice none) (custom_stage_rules.cpp)
+fn_80278A78 hle_SecretContainerParams   # cheat 'All weapons': the Secret Container's weapon (+0x94) cycles the special weapons (cheats.cpp)
+fn_80299130 hle_SaveWrite   # unlock all stages: the save is written with the real stage flags (game_hooks.cpp)
+fn_8029986C hle_SaveWrite2   # unlock all stages: same for the second save writer (game_hooks.cpp)
+fn_8000F654 hle_MarkerProject   # #89 world-anchored 2D markers (lock-on, enemy HP bars): projection paired with the 16:9 squeeze (widescreen.cpp)
+fn_8000F7BC hle_MarkerViewValues   # #89 the view values that projection reads (widescreen.cpp)
+fn_80049BC0 hle_TextPrint   # #87 game text print: Rt2d sized with the window factors widescreen.cpp applied (widescreen.cpp)
+fn_8001299C hle_BossSlotRegister   # #104 two bosses: keep every archive offered for the shared boss key 0x16 (boss_slots.cpp)
+fn_800124E4 hle_BossSlotFind   # #104 two bosses: key 0x16 gives the running boss its own archive (boss_slots.cpp)
+fn_8027DEB0 hle_BossBaseUpdate   # #104 two bosses: boss base update = which boss is running (boss_slots.cpp)
+fn_800AF53C hle_RamShadowMessage   # #111 speed ram: Shadow's command handler (speed_ram.cpp)
+fn_80117D6C hle_SavePointUpdate   # #107 / #108 checkpoint update: test open request (WARP_OPEN) (warp_hud.cpp)
+fn_80117494 hle_WarpAllowed   # #107 / #108 the warp screen open check: WARP_LOG / WARP_FORCE (warp_hud.cpp)
+fn_80331388 hle_WarpScreenUpdate   # #108 the warp screen per-frame update: open / which checkpoint each hexagon is (warp_hud.cpp)
+fn_802A9594 hle_EggWait   # #127 Egg Breaker WAIT: his own stage's mode choice in any stage (egg_breaker.cpp)
+fn_802AA620 hle_EggShoot   # #127 Egg Breaker ATK_SHOOT: his own stage's timings in any stage (egg_breaker.cpp)
+fn_8029176C hle_BossCamMotion   # #127 boss intro camera (BossCtrlUnit_PlayCameraMotion) skipped outside boss stages unless boss_intro_camera=1 (boss_arena.cpp)
+fn_80290FC8 hle_BossDispGauge   # #125 several bosses: one HP bar = sum of all bosses HP / max (boss_ai.cpp)
+fn_80175EEC hle_BossStageAction   # #125 several bosses: a boss clear (action 6) waits until the last boss is down (boss_ai.cpp)
+fn_802AB2E0 hle_EggStart   # #127 Egg Breaker START: no intro camera hold outside 310/411/511 unless boss_intro_camera=1 (egg_breaker.cpp)
+fn_80290DF4 hle_BossCheckEvent   # #125 several bosses: a boss without an event does not end another boss's event (boss_ai.cpp)
+fn_801F2770 hle_SoundBankLoad   # boss sound banks 8-10 after the stage bank, from mods/sound_banks.txt (sound_banks.cpp)
+fn_80286324 hle_BDBoomerang   # #126 Black Doom attack units: a GET_COMBO request (his stage-bound teleport) becomes the brain's ring-point teleport (boss_ai.cpp)
+fn_80285B84 hle_BDDisk   # #126 (boss_ai.cpp)
+fn_80285EFC hle_BDMeteor   # #126 (boss_ai.cpp)
+fn_8043B1AC hle_GcaxNewAramBank   # boss sound banks: ARAM banks 8-10 sized from mods/sound_banks.txt at boot (sound_banks.cpp)
+fn_80231CE8 hle_BB0210CamLock   # #126 boss camera lock off outside boss stages unless boss_camera_lock=1 (boss_ai.cpp)
+fn_8026D608 hle_BB0412CamLock   # #126 (boss_ai.cpp)
+fn_802813F0 hle_BDCamLock   # #126 (boss_ai.cpp)
+fn_8026B7E4 hle_BFCamLock   # #126 (boss_ai.cpp)
+fn_80285750 hle_BDReady   # #126 Black Doom READY: the brain's attack pattern right after his own choice (boss_ai.cpp)
+fn_80252848 hle_BFChase   # #130 Blue Falcon CHASE: its circle centred on its placement outside 510 (boss_ai.cpp)
+fn_80252B7C hle_BFEscape   # #130 Blue Falcon ESCAPE: same (boss_ai.cpp)
+fn_8026BF54 hle_BFMove   # #130 Blue Falcon Move: its origin-centred flight ring centred on its placement outside 510 (boss_ai.cpp)
+fn_8024D6AC hle_HDGetStatus   # #130 Blue Falcon polar angles round its placement outside 510 (boss_ai.cpp)
+fn_80250290 hle_HDWait   # #130 Heavy Dog movement modes in a frame centred on his placement outside 410 (boss_ai.cpp)
+fn_80250C78 hle_HDStart   # #130 (boss_ai.cpp)
+fn_80250440 hle_HDChase   # #130 (boss_ai.cpp)
+fn_80250614 hle_HDEscape   # #130 (boss_ai.cpp)
+fn_80250B90 hle_HDGetAtk   # #130 (boss_ai.cpp)
+fn_80250D94 hle_HDBelowHalf   # #130 (boss_ai.cpp)
+fn_8026D220 hle_HDMove   # #130 Heavy Dog Move in his frame (boss_ai.cpp)
+fn_801CED24 hle_CamCreate   # #130 research: camera create log under CAM_CREATE_LOG=1, else pass-through (boss_ai.cpp)
+fn_802A5AC0 hle_EggCamLock   # #130 Egg Breaker camera lock under boss_camera_lock (boss_ai.cpp)
+fn_80252F8C hle_BFStart   # #130 Blue Falcon START swoop round its ring centre outside 510 (boss_ai.cpp)
+fn_802D3934 hle_DiablonEventPlace   # #125 Diablon event actor positions re-anchored on Shadow outside 611/613/618 (boss_ai.cpp)
+fn_80322680 hle_DiablonCamera   # #125 Diablon camera part skipped outside 611/613/618 unless boss_camera_lock=1 (boss_ai.cpp)
+fn_801A6EC4 hle_EnemyTaskUpdate   # #152 #2 enemy task update: PERF_OBJ timing, far-enemy update rate (object_perf.cpp)
+fn_803A0AAC hle_DynamicCast   # #152 #7 __dynamic_cast memoised per (vtable, offset, types) - identical results (guest_fast.cpp)
+
+fn_800C9F68 hle_SetCap_800C9F68   # #158 SetManager table size from its own capacity (set_capacity.cpp, generated by agents/claude/scripts/make_set_capacity.py)
+fn_800CA098 hle_SetCap_800CA098
+fn_800CA0CC hle_SetCap_800CA0CC
+fn_800CA194 hle_SetCap_800CA194
+fn_800CA1E0 hle_SetCap_800CA1E0
+fn_800CA258 hle_SetCap_800CA258
+fn_800CA2CC hle_SetCap_800CA2CC
+fn_800CA644 hle_SetCap_800CA644
+fn_800CA820 hle_SetCap_800CA820
+fn_800CAA3C hle_SetCap_800CAA3C
+fn_800CAB50 hle_SetCap_800CAB50
+fn_800CB08C hle_SetCap_800CB08C

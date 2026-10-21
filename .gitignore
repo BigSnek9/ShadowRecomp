@@ -1,0 +1,124 @@
+# ShadowRecomp - what goes on GitHub.
+# This is an ALLOW-LIST: everything is ignored, then only what someone needs to BUILD and RUN the game (and the
+# work-in-progress stage editor) is let back in. The crew's notes, tickets, tests, scripts and logs stay on the PC.
+# A new file or folder stays local until it is added here on purpose.
+# NEVER allowed: game files (disc, DOL, textures, audio, models), generated/ (code recompiled from the DOL),
+# builds, play\, saves, logs, keys.
+
+/*
+
+# --- top level: the build ------------------------------------------------------------------------
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/CHANGELOG.md
+!/LICENSE
+!/VERSION
+!/CMakeLists.txt
+!/build.cmd
+!/build_env.cmd
+# inputs of tools/gen.py (function overrides / hooks)
+!/overrides.txt
+!/callhooks.txt
+!/multientry.txt
+!/dtscale.txt
+!/tracefns.txt
+
+# README screenshots
+!/media/
+
+# --- the game: runtime + Aurora ------------------------------------------------------------------
+!/runtime/
+/runtime/_retired/
+!/third_party/
+# nested git repo (reference only, clone it from codeberg.org/ChloeVZ/sh05-decomp)
+/third_party/sh05-decomp/
+
+# --- tools: the generator, the disc import, the stage editor -------------------------------------
+!/tools/
+/tools/*
+!/tools/gen.py
+!/tools/dol.py
+!/tools/lift.py
+!/tools/one_archive.py
+!/tools/texture_dump.py
+!/tools/game_import/
+!/tools/menu/
+!/tools/audio/
+!/tools/stage_editor/
+!/tools/tilesets/
+# neutral icon / art the build uses when the game-derived ones are not there (fresh clone)
+!/tools/release/
+/tools/release/*
+!/tools/release/placeholder/
+
+# --- work: only the symbol map tools/gen.py reads (names + addresses, no game code) --------------
+!/work/
+/work/*
+!/work/dtk/
+/work/dtk/*
+!/work/dtk/config.yml
+!/work/dtk/splits.txt
+!/work/dtk/symbols.txt
+
+# --- excluded inside the allowed folders ---------------------------------------------------------
+# Game-derived art compiled into the exe (memory-card icon, title emblem / backdrop remakes); a fresh clone builds
+# with tools/release/placeholder instead (CMakeLists.txt)
+/runtime/shadow.ico
+/runtime/assets/*.png
+*.res
+# game screenshots
+/tools/stage_editor/capture/
+# third-party binaries (dtk, ninja, ffmpeg): fetched by whoever builds, not committed
+*.exe
+*.dll
+*.pdb
+
+# --- never, anywhere -----------------------------------------------------------------------------
+openrouter_key.txt
+*key*.txt
+*.key
+*.pem
+.env
+.env.*
+__pycache__/
+*.pyc
+*.lnk
+*.log
+*.err
+logs/
+saves/
+*.raw
+*.iso
+*.gcm
+*.rvz
+*.ciso
+*.gcz
+*.wbfs
+*.nkit.*
+*.dol
+*.rel
+*.one
+*.txd
+*.afs
+*.adx
+*.sfd
+*.dff
+*.bsp
+*.snb
+*.mtn
+*.bon
+*.tp
+*.met
+*.thp
+*.dsp
+*.ahx
+shadow_settings.ini
+shadow_state.ini
+shadow_live.ini
+shadow_cheats.ini
+# the editor's crew test scripts (local)
+/tools/stage_editor/test_events_v4.py
+/tools/stage_editor/ui2/check_ui2.py
+/tools/stage_editor/ui2/shot_ui2.py
+/tools/stage_editor/ui2/selftest.md

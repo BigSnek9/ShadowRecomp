@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "about": "#132 in-game settings menu content (track B). One line per setting (restart: none / stage = next stage / game = after a game restart); edit here, then python tools/menu/gen_menu_schema.py (writes runtime/menu_schema.h, checks parity with the runtime keys).",
+  "pages": [
+    {"id": "display", "title": "Display", "sections": [
+      {"title": "Quick setup", "note": "The game starts as the original. Items tagged Experimental are new and may be janky - try them if you like.", "items": [
+        {"key": "resolution", "kind": "resolution", "label": "Resolution", "help": "How sharp the picture is. Auto matches your window or screen.", "options": [["Auto (match the window)", 0, 0], ["640 x 480  (4:3, original)", 640, 480], ["1280 x 720", 1280, 720], ["1600 x 900", 1600, 900], ["1920 x 1080", 1920, 1080], ["2560 x 1440", 2560, 1440], ["3200 x 1800", 3200, 1800], ["3840 x 2160  (4K)", 3840, 2160], ["5120 x 2880  (5K)", 5120, 2880], ["7680 x 4320  (8K)", 7680, 4320]], "default": [0, 0], "keys": ["width", "height"], "store": "ini", "restart": "none"},
+        {"key": "widescreen", "kind": "choice", "label": "Aspect ratio", "help": "Widescreen 16:9 shows more of the world at the sides. 4:3 is the original picture.", "options": [["4:3 (original)", 0], ["Widescreen 16:9", 1]], "default": 0, "store": "ini", "restart": "none"},
+        {"key": "light", "kind": "toggle", "label": "Real-time shadows", "help": "Real shadows cast by the world and characters. Its options are on the Lighting page.", "default": 0, "store": "ini", "restart": "none", "experimental": true}
+      ]},
+      {"title": "Screen", "items": [
+        {"key": "fullscreen", "kind": "toggle", "label": "Full screen", "help": "Fill the whole screen. You can also press F11 or Alt+Enter.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "fps_target", "kind": "fps", "label": "Frame rate", "help": "Pictures per second; the game speed stays the same. Unlimited can make sound stutter on slow PCs.", "default": 60, "options": [["30", 30], ["48", 48], ["60", 60], ["72", 72], ["90", 90], ["100", 100], ["120", 120], ["144", 144], ["165", 165], ["200", 200], ["240", 240], ["300", 300], ["360", 360], ["500", 500], ["Unlimited", 0]], "store": "ini", "restart": "none"},
+        {"key": "show_fps", "kind": "toggle", "label": "Show frame rate", "help": "Shows the frame rate in a corner of the screen.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "cutscene_fps_cap", "kind": "choice", "label": "Cutscene smoothness", "help": "Cutscenes were made for 60. \"Same as the game\" can make them judder above 60.", "options": [["60 (original)", 60], ["Same as the game", 0]], "default": 60, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "View", "items": [
+        {"key": "fov_percent", "kind": "slider", "label": "Field of view", "help": "How wide the camera sees. 100% is the original.", "lo": 70, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "draw_distance", "kind": "slider", "label": "View distance", "help": "How far away the world is drawn. 100% is the original; more can lower the frame rate.", "lo": 100, "hi": 400, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "draw_objects", "kind": "slider", "label": "Object distance", "help": "How far away rings and decorations appear. 100% is the original; more can lower the frame rate.", "lo": 100, "hi": 300, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "stage"},
+        {"key": "original_logic", "kind": "toggle", "label": "Original game logic", "help": "Runs the game's own code exactly: speed-ups off, view and object distance back to 100%.", "default": 1, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Picture", "items": [
+        {"key": "game_bloom", "kind": "toggle", "label": "Glow", "help": "The game's soft glow around bright lights, fire and neon. Off: a sharper, flatter picture.", "default": 1, "store": "ini", "restart": "none"},
+        {"key": "game_bloom_strength", "kind": "slider", "label": "Glow strength", "help": "100% is the glow as in the original game; 0% is no glow.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "shown_if": "game_bloom", "store": "ini", "restart": "none"},
+        {"key": "game_bloom_quality", "kind": "choice", "label": "Glow smoothness", "help": "Smooth: the same glow without square blocks. Original: the game's own blocky glow.", "options": [["Original", 0], ["Smooth", 1]], "default": 0, "shown_if": "game_bloom", "store": "ini", "restart": "none"}
+      ]},
+      {"title": "HDR", "items": [
+        {"key": "hdr", "kind": "toggle", "label": "HDR", "help": "Brighter highlights on an HDR screen. Turn on HDR in Windows first.", "default": 0, "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_paper_white", "kind": "slider", "label": "Paper white", "help": "How bright normal white things are, like menus and sky.", "lo": 80, "hi": 600, "fmt": "%d nits", "default": 200, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_peak", "kind": "slider", "label": "Peak brightness", "help": "Set this to your screen's brightest level.", "lo": 400, "hi": 4000, "fmt": "%d nits", "default": 1000, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_highlight", "kind": "slider", "label": "Highlights", "help": "How much extra brightness lights, fire and the sun get.", "lo": 0, "hi": 100, "fmt": "%d%%", "default": 20, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_saturation", "kind": "slider", "label": "Saturation", "help": "How strong the colours are. 100% is normal.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_vibrance", "kind": "slider", "label": "Vibrance", "help": "Boosts dull colours more than bright ones.", "lo": 0, "hi": 100, "fmt": "%d%%", "default": 0, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_contrast", "kind": "slider", "label": "Contrast", "help": "The difference between dark and bright parts. 100% is normal.", "lo": 70, "hi": 140, "fmt": "%d%%", "default": 100, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_black", "kind": "slider", "label": "Black level", "help": "Below 0 makes blacks deeper, above 0 lighter.", "lo": -20, "hi": 20, "fmt": "%d", "default": 0, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "hdr_ui_white", "kind": "slider", "label": "UI brightness", "help": "How bright the menus and HUD are.", "lo": 80, "hi": 500, "fmt": "%d nits", "default": 200, "shown_if": "hdr", "store": "ini", "restart": "none", "experimental": true}
+      ]},
+      {"title": "Interface", "items": [
+        {"key": "cutscene_bars", "kind": "toggle", "label": "Black bars when needed", "help": "Bars slide in when the game shows a 4:3-only scene, hiding the gaps and missing scenery at the sides.", "default": 1, "store": "ini", "restart": "none"},
+        {"key": "menu_tint", "kind": "choice", "label": "Menu colours", "help": "This menu in dark or light colours.", "options": [["Dark", 0], ["Light", 1]], "default": 0, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Textures", "note": "Put your textures in textures\\Custom next to the game. System page > Extract the game's textures fills textures\\Original: copy a picture from there, edit it, keep its file name (with the [tex1_...] part) and put it in Custom.", "items": [
+        {"key": "custom_textures", "kind": "toggle", "label": "Use my textures", "help": "Uses your pictures from the textures\\Custom folder next to the game. Changes show while you play.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "custom_textures_dir", "kind": "path", "label": "My textures folder", "help": "Empty means textures\\Custom next to the game. You can pick another folder here.", "default": "", "shown_if": "custom_textures", "store": "ini", "restart": "none"},
+        {"key": "tex_match", "kind": "slider", "label": "Match original colours", "help": "Moves your textures' colours closer to the original ones. 0% leaves them as they are.", "lo": 0, "hi": 100, "fmt": "%d%%", "default": 0, "shown_if": "custom_textures", "store": "ini", "restart": "none"}
+      ]}
+    ]},
+    {"id": "gameplay", "title": "Gameplay", "sections": [
+      {"title": "Camera", "items": [
+        {"key": "cam_recentre", "kind": "toggle", "label": "L puts the camera behind you", "help": "Press L to swing the camera back behind Shadow.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "cam_sens", "kind": "slider", "label": "Camera speed", "help": "How fast the camera turns.", "lo": 25, "hi": 300, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "invert_cam_x", "kind": "toggle", "label": "Flip camera left / right", "help": "Turns the camera the other way left and right.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "invert_cam_y", "kind": "toggle", "label": "Flip camera up / down", "help": "Turns the camera the other way up and down.", "default": 0, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Character", "items": [
+        {"key": "skin", "kind": "choice", "label": "Character look", "help": "Play as one of the game's other models: 2P colours, Metal, Super, Evil or Sonic.", "default": 0, "options": [["Shadow (original)", 0], ["2P Yellow", 1], ["2P Green", 2], ["2P Orange", 3], ["Metal blue", 4], ["Metal purple", 5], ["Super Shadow", 6], ["Evil Shadow", 7], ["Sonic", 8]], "restart": "game", "store": "ini"}
+      ]},
+      {"title": "Stages", "items": [
+        {"key": "skip_any_cutscene", "kind": "toggle", "label": "Skip any cutscene", "help": "Press START (Tab on a keyboard) in a story scene or movie to skip it, even the first time.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "warp_enemy_counts", "kind": "toggle", "label": "Enemies left on the warp screen", "help": "Shows how many mission enemies are left near each checkpoint.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "set_objects", "kind": "choice", "label": "Objects per stage", "help": "Room for more objects in custom stages (Original holds 2,048). Needs Original game logic off.", "options": [["Original (2,048)", 0], ["4,096", 1], ["8,192", 2]], "default": 0, "store": "ini", "restart": "stage"}
+      ]},
+      {"title": "Bosses", "items": [
+        {"key": "boss_rework", "kind": "toggle", "label": "Hard bosses", "help": "Bosses fight with new, harder attacks, unlike the original fights.", "default": 0, "store": "ini", "restart": "stage", "experimental": true}
+      ]}
+    ]},
+    {"id": "movement", "title": "Movement", "sections": [
+      {"title": "Style", "items": [
+        {"key": "mv_preset", "kind": "choice", "label": "Movement style", "help": "Original is the game itself. Make your own: New preset from the sliders, name it, then choose it.", "default": 0, "options": [["Original", 0], ["Custom", 1]], "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Moves", "items": [
+        {"key": "speed_ram", "kind": "toggle", "label": "Speed ram", "help": "At top speed, enemies you run into get hit instead of you.", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "hm_mode", "kind": "choice", "label": "Homing attack aim", "help": "Original: the closest target. Smart: the target you point the stick at, enemies first.", "options": [["Original", 0], ["Smart", 1]], "default": 0, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "On the ground", "note": "Used by your own movement presets (Custom).", "items": [
+        {"key": "mv_max_speed", "kind": "slider", "label": "Top speed", "help": "100% is the original.", "default": 100, "lo": 50, "hi": 200, "fmt": "%d%%", "group": "Ground", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_accel", "kind": "slider", "label": "Speeding up", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 400, "fmt": "%d%%", "group": "Ground", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_turn", "kind": "slider", "label": "Turning", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 300, "fmt": "%d%%", "group": "Ground", "shown_if": "mv_preset", "store": "ini", "restart": "none"}
+      ]},
+      {"title": "In the air", "items": [
+        {"key": "mv_air_drag", "kind": "slider", "label": "Slowing in the air", "help": "100% is the original.", "default": 100, "lo": 0, "hi": 400, "fmt": "%d%%", "group": "Air", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_air_control", "kind": "slider", "label": "Steering in the air", "help": "100% is the original.", "default": 100, "lo": 0, "hi": 400, "fmt": "%d%%", "group": "Air", "shown_if": "mv_preset", "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Jumping", "items": [
+        {"key": "mv_jump", "kind": "slider", "label": "Jump height", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 300, "fmt": "%d%%", "group": "Jump", "shown_if": "mv_preset", "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Falling", "items": [
+        {"key": "mv_gravity", "kind": "slider", "label": "Gravity", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 400, "fmt": "%d%%", "group": "Fall / weight", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_fall_max", "kind": "slider", "label": "Falling speed", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 400, "fmt": "%d%%", "group": "Fall / weight", "shown_if": "mv_preset", "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Homing attack", "items": [
+        {"key": "mv_homing_bounce", "kind": "slider", "label": "Bounce height", "help": "After a homing attack. 100% is the original.", "default": 100, "lo": 0, "hi": 300, "fmt": "%d%%", "group": "Homing", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_homing_time", "kind": "slider", "label": "Bounce time", "help": "After a homing attack. 100% is the original.", "default": 100, "lo": 0, "hi": 300, "fmt": "%d%%", "group": "Homing", "shown_if": "mv_preset", "store": "ini", "restart": "none"},
+        {"key": "mv_homing_fall", "kind": "slider", "label": "Fall after the bounce", "help": "100% is the original.", "default": 100, "lo": 25, "hi": 400, "fmt": "%d%%", "group": "Homing", "shown_if": "mv_preset", "store": "ini", "restart": "none"}
+      ]}
+    ]},
+    {"id": "audio", "title": "Audio", "sections": [
+      {"title": "Volume", "items": [
+        {"key": "vol_master", "kind": "slider", "label": "Overall volume", "help": "All sound at once. 100% is the original.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "vol_music", "kind": "slider", "label": "Music", "help": "Stage and menu music.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "vol_sfx", "kind": "slider", "label": "Sound effects", "help": "Jumps, rings, explosions.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "vol_dialogue", "kind": "slider", "label": "Voices", "help": "Characters talking and radio calls.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "mute_background", "kind": "toggle", "label": "Mute when in the background", "help": "No sound while the game window is not in front or is minimised.", "default": 0, "store": "ini", "restart": "none"}
+      ]}
+    ]},
+    {"id": "controls", "title": "Controls", "sections": []},
+    {"id": "lighting", "title": "Lighting", "sections": [
+      {"title": "Shadows", "note": "Experimental: real-time shadows are still being worked on and may look wrong or slow the game.", "items": [
+        {"key": "light_quality", "kind": "choice", "label": "Shadow quality", "help": "Higher gives smoother shadow edges but is slower.", "options": [["Low", 0], ["Medium", 1], ["High", 2], ["Ultra", 3]], "default": 1, "shown_if": "light", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "light_shadow_res", "kind": "choice", "label": "Shadow sharpness", "help": "Higher gives sharper shadows.", "options": [["1024", 0], ["2048", 1]], "default": 1, "shown_if": "light", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "light_shadow_dist", "kind": "slider", "label": "Shadow distance", "help": "How far away shadows are drawn.", "lo": 25, "hi": 300, "fmt": "%d%%", "default": 100, "shown_if": "light", "store": "ini", "restart": "none", "experimental": true},
+        {"key": "light_char_cast", "kind": "toggle", "label": "Character shadows", "help": "Shadow and the other characters cast a soft shadow on the ground.", "default": 1, "shown_if": "light", "store": "ini", "restart": "none", "experimental": true}
+      ]},
+      {"title": "Colour", "note": "Picture colour in normal and HDR. With every slider at its default the game looks exactly as it did.", "items": [
+        {"key": "col_exposure", "kind": "slider", "label": "Brightness", "help": "Makes the whole picture brighter or darker. 0 is the original.", "lo": -20, "hi": 20, "fmt": "%d", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "col_black", "kind": "slider", "label": "Black level", "help": "Below 0 makes the darkest parts darker, above 0 lighter. 0 is the original.", "lo": -50, "hi": 50, "fmt": "%d", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "col_white", "kind": "slider", "label": "White level", "help": "How bright the brightest parts are. 100% is the original.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_gamma", "kind": "slider", "label": "Mid tones", "help": "Above 100% brightens the middle shades, below 100% darkens them.", "lo": 50, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_contrast", "kind": "slider", "label": "Contrast", "help": "Above 100% makes darks darker and brights brighter.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_saturation", "kind": "slider", "label": "Colour strength", "help": "0% is black and white, 100% is the original, 200% is very colourful.", "lo": 0, "hi": 200, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_vibrance", "kind": "slider", "label": "Vibrance", "help": "Livens up dull colours without overdoing strong ones. 0% is the original.", "lo": -100, "hi": 100, "fmt": "%d%%", "default": 0, "store": "ini", "restart": "none"},
+        {"key": "col_r", "kind": "slider", "label": "Red", "help": "How much red is in the picture. 100% is the original.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_g", "kind": "slider", "label": "Green", "help": "How much green is in the picture. 100% is the original.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"},
+        {"key": "col_b", "kind": "slider", "label": "Blue", "help": "How much blue is in the picture. 100% is the original.", "lo": 50, "hi": 150, "fmt": "%d%%", "default": 100, "store": "ini", "restart": "none"}
+      ]},
+      {"title": "Ambient occlusion", "items": [
+        {"key": "light_ao", "kind": "toggle", "label": "Ambient occlusion", "help": "Soft shading in corners where surfaces meet. Work in progress: not available yet.", "default": 0, "store": "ini", "restart": "none", "wip": true}
+      ]}
+    ]},
+    {"id": "cheats", "title": "Cheats", "sections": [
+      {"title": "Stages", "items": [
+        {"key": "unlock_all_stages", "kind": "session", "store": "cheats", "label": "Unlock every stage", "help": "For Select Mode, this session only. Your save is not changed.", "default": 0, "restart": "none"}
+      ]},
+      {"title": "Lives and rings", "note": "Cheats last until you restart the game. Autosave can still keep what you earn with them.", "items": [
+        {"key": "cheat_infinite_lives", "kind": "session", "store": "cheats", "cheat": 0, "label": "Lives never run out", "help": "Your lives stay at 9.", "default": 0, "restart": "none"},
+        {"key": "cheat_infinite_rings", "kind": "session", "store": "cheats", "cheat": 12, "label": "Rings never run out", "help": "A hit still drops rings, but your count stays.", "default": 0, "restart": "none"},
+        {"key": "cheat1", "kind": "session", "store": "cheats", "cheat": 1, "label": "Never below 20 rings", "help": "You can still collect more.", "default": 0, "restart": "none"},
+        {"key": "cheat2", "kind": "session", "store": "cheats", "cheat": 2, "label": "999 rings", "help": "Careful: this finishes Circus Park's ring mission at once.", "default": 0, "restart": "none"}
+      ]},
+      {"title": "Weapons and vehicles", "items": [
+        {"key": "cheat_infinite_ammo", "kind": "session", "store": "cheats", "cheat": 3, "label": "Weapons never run out", "help": "Guns and weapons keep their ammo.", "default": 0, "restart": "none"},
+        {"key": "cheat_all_weapons", "kind": "session", "store": "cheats", "cheat": 13, "label": "Every weapon in the weapon box", "help": "The special weapon box holds every weapon.", "default": 0, "restart": "none"},
+        {"key": "cheat4", "kind": "session", "store": "cheats", "cheat": 4, "label": "Vehicles never break", "help": "Vehicles and other health bars stay full.", "default": 0, "restart": "none"}
+      ]},
+      {"title": "Score", "items": [
+        {"key": "cheat5", "kind": "session", "store": "cheats", "cheat": 5, "label": "Top score", "help": "Score set to 99,999,999.", "default": 0, "restart": "none"},
+        {"key": "cheat6", "kind": "session", "store": "cheats", "cheat": 6, "label": "Top Hero points", "help": "Hero points set to the maximum.", "default": 0, "restart": "none"},
+        {"key": "cheat7", "kind": "session", "store": "cheats", "cheat": 7, "label": "Top Dark points", "help": "Dark points set to the maximum.", "default": 0, "restart": "none"}
+      ]},
+      {"title": "Hero and Dark gauges", "items": [
+        {"key": "cheat_hero_gauge", "kind": "session", "store": "cheats", "cheat": 10, "label": "Hero gauge always full", "help": "The Hero gauge never empties.", "default": 0, "restart": "none"},
+        {"key": "cheat_dark_gauge", "kind": "session", "store": "cheats", "cheat": 11, "label": "Dark gauge always full", "help": "The Dark gauge never empties.", "default": 0, "restart": "none"},
+        {"key": "cheat8", "kind": "session", "store": "cheats", "cheat": 8, "label": "Fill Hero gauge with Z + L", "help": "Hold Z and L to fill the Hero gauge.", "default": 0, "restart": "none"},
+        {"key": "cheat9", "kind": "session", "store": "cheats", "cheat": 9, "label": "Fill Dark gauge with Z + R", "help": "Hold Z and R to fill the Dark gauge.", "default": 0, "restart": "none"}
+      ]},
+      {"title": "Set values now", "items": [
+        {"key": "rings", "kind": "live", "store": "live", "label": "Rings", "help": "Change your rings now.", "lo": 0, "hi": 999, "restart": "none", "step": 1},
+        {"key": "lives", "kind": "live", "store": "live", "label": "Lives", "help": "Change your lives now.", "lo": 0, "hi": 99, "restart": "none", "step": 1},
+        {"key": "score", "kind": "live", "store": "live", "label": "Score", "help": "Change the score now.", "lo": 0, "hi": 99999999, "restart": "none", "step": 100},
+        {"key": "hero_score", "kind": "live", "store": "live", "label": "Hero points", "help": "Change your Hero points now.", "lo": 0, "hi": 9999999, "restart": "none", "step": 100},
+        {"key": "dark_score", "kind": "live", "store": "live", "label": "Dark points", "help": "Change your Dark points now.", "lo": 0, "hi": 9999999, "restart": "none", "step": 100},
+        {"key": "hero_gauge", "kind": "live", "store": "live", "label": "Hero gauge", "help": "Fill the Hero gauge now: 0 to 100%.", "lo": 0, "hi": 30000, "scale": 30000, "unit": "%", "restart": "none", "step": 300},
+        {"key": "dark_gauge", "kind": "live", "store": "live", "label": "Dark gauge", "help": "Fill the Dark gauge now: 0 to 100%.", "lo": 0, "hi": 30000, "scale": 30000, "unit": "%", "restart": "none", "step": 300}
+      ]}
+    ]},
+    {"id": "system", "title": "System", "sections": [
+      {"title": "Bug reports", "items": [
+        {"key": "bug_key", "kind": "toggle", "label": "Bug report key", "help": "F12, or Back + Start on a pad, saves a bug report (picture and game state) in the bugs folder.", "default": 0, "store": "ini", "restart": "none"}
+      ]}
+    ]}
+  ]
+}
